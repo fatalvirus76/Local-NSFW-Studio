@@ -12,9 +12,9 @@ En lokal, privat webbläsarbaserad studio för erotisk rollspel och bildgenereri
 ### 1. Förbered miljö
 Du behöver ha följande tjänster igång på din dator:
 
-- **Ollama**: Installera och dra ner en chattmodell (t.ex. `https://huggingface.co/trohrbaugh/Qwen3.5-9B-heretic` för vision och samma för text).
+- **Ollama**: Installera och dra ner en chattmodell (t.ex. `https://huggingface.co/mradermacher/Qwen3.5-9B-heretic-GGUF` för vision och samma för text).
   ```bash
-  ollama pull https://huggingface.co/trohrbaugh/Qwen3.5-9B-heretic
+  ollama pull https://huggingface.co/mradermacher/Qwen3.5-9B-heretic-GGUF:Q4_K_M
   ```
 
 - **ComfyUI**: Dra ner och starta ComfyUI med en checkpoint (t.ex. `epicrealism.safetensors`).
@@ -158,7 +158,7 @@ You need to have the following services running on your computer:
 
 - **Ollama**: Install and pull a chat model (e.g., `https://huggingface.co/trohrbaugh/Qwen3.5-9B-heretic` for vision, same for text).
   ```bash
-  ollama pull https://huggingface.co/trohrbaugh/Qwen3.5-9B-heretic
+  ollama pull https://huggingface.co/mradermacher/Qwen3.5-9B-heretic-GGUF:Q4_K_M
   ```
 
 - **ComfyUI**: Download and start ComfyUI with a checkpoint (e.g., `epicrealism.safetensors`).
