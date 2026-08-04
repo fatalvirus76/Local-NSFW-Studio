@@ -1,0 +1,2738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="https://fatalv.one/pic/nsfw.png" />
+  <link rel="apple-touch-icon" href="https://fatalv.one/pic/nsfw.png" />
+  <title>Local NSFW Studio — Ollama + ComfyUI</title>
+  <style>
+    /* ===== TEMA-VARIABLER ===== */
+    :root {
+      --bg: #0d0b12; --bg2: #16121f; --panel: #1c1728; --border: #2e2640;
+      --text: #f0eaf8; --muted: #9a8fb0; --accent: #c44dff; --accent2: #ff4d8d;
+      --user: #2a1f3d; --bot: #1a1525; --ok: #3dd68c; --err: #ff5c7a;
+      /* ===== ÄNDRAT: Saknades i dark-temat, används av .dot.ok och .diag.ok ===== */
+      --success: #3dd68c;
+      --radius: 14px; --shadow: 0 10px 40px rgba(0,0,0,.45);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      --header-bg: rgba(13,11,18,.85);
+      --composer-bg: rgba(22,18,31,.92);
+      --chip-bg: #251c35;
+      --diag-bg: #120f1a;
+      --en-prompt-bg: #121018;
+      --msg-user-from: #322048;
+    }
+    body.theme-light {
+      --bg: #f5f2fa; --bg2: #ffffff; --panel: #efeaf5; --border: #d4c7e3;
+      --text: #1e1a2e; --muted: #6b5f7a; --accent: #8b3fd9; --accent2: #d9346b;
+      --user: #e0d6f0; --bot: #ffffff; --success: #2b9e6a; --err: #d43b5a;
+      --header-bg: rgba(245,242,250,.85);
+      --composer-bg: rgba(255,255,255,.92);
+      --chip-bg: #e8e0f0;
+      --diag-bg: #f0ebf5;
+      --en-prompt-bg: #ede8f5;
+      --msg-user-from: #d4c7e3;
+    }
+    body.theme-synthwave {
+      --bg: #0b0914; --bg2: #120f1f; --panel: #1c1630; --border: #45207a;
+      --text: #f0e6ff; --muted: #a67edb; --accent: #ff2eff; --accent2: #00f0ff;
+      --user: #2d1b4e; --bot: #150f24; --success: #0ff; --err: #ff0066;
+      --header-bg: rgba(11,9,20,.85);
+      --composer-bg: rgba(18,15,31,.92);
+      --chip-bg: #2a1b40;
+      --diag-bg: #150f24;
+      --en-prompt-bg: #1c1630;
+      --msg-user-from: #2d1b4e;
+    }
+    body.theme-dracula {
+      --bg: #282a36; --bg2: #1e1f29; --panel: #2b2d3b; --border: #44475a;
+      --text: #f8f8f2; --muted: #6272a4; --accent: #ff79c6; --accent2: #50fa7b;
+      --user: #3b3e52; --bot: #22232f; --success: #50fa7b; --err: #ff5555;
+      --header-bg: rgba(40,42,54,.85);
+      --composer-bg: rgba(30,31,41,.92);
+      --chip-bg: #3b3e52;
+      --diag-bg: #1e1f29;
+      --en-prompt-bg: #2b2d3b;
+      --msg-user-from: #3b3e52;
+    }
+
+    header { background: var(--header-bg); backdrop-filter: blur(12px); }
+
+    .theme-picker { display: flex; gap: 6px; align-items: center; }
+    .theme-btn {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+      cursor: pointer; display: inline-block; transition: .15s;
+    }
+    .theme-btn:hover { transform: scale(1.2); }
+    .theme-btn.active { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
+    body {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      grid-template-rows: 56px 1fr;
+      height: 100vh; overflow: hidden;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(196,77,255,.12), transparent 50%),
+        radial-gradient(900px 500px at 100% 0%, rgba(255,77,141,.10), transparent 45%),
+        var(--bg);
+    }
+    header {
+      grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px; border-bottom: 1px solid var(--border);
+      z-index: 5;
+    }
+    header h1 {
+      margin: 0; font-size: 15px; font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .status-row { display: flex; gap: 12px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: #666; }
+    .dot.ok { background: var(--success); box-shadow: 0 0 10px rgba(61,214,140,.6); }
+    .dot.bad { background: var(--err); }
+    .dot.warn { background: #f0c84a; }
+    main, .gallery-pane { min-height: 0; overflow: hidden; }
+    /* ===== INSTÄLLNINGSMENY (drawer) — som Inställningar-fliken i Swift-appen ===== */
+    .drawer-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 60;
+    }
+    .drawer-backdrop.show { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 70;
+      width: min(370px, 94vw); background: var(--bg2); border-left: 1px solid var(--border);
+      transform: translateX(105%); transition: transform .25s ease;
+      display: flex; flex-direction: column; box-shadow: -10px 0 40px rgba(0,0,0,.45);
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .drawer-body {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 14px; min-height: 0;
+    }
+    .avatar { cursor: pointer; }
+    .gallery-pane {
+      border-left: 1px solid var(--border); background: var(--bg2);
+      padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+    }
+    main { display: flex; flex-direction: column; }
+    .section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px;
+      color: var(--muted); margin-bottom: 8px; font-weight: 700;
+    }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%; background: var(--panel); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px; padding: 9px 11px; font-size: 13px; outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px rgba(196,77,255,.15);
+    }
+    textarea { resize: vertical; min-height: 72px; line-height: 1.4; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .row.three { grid-template-columns: 1fr 1fr 1fr; }
+    .btn {
+      appearance: none; border: 1px solid var(--border); background: var(--panel);
+      color: var(--text); border-radius: 10px; padding: 9px 12px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all .15s ease;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.primary {
+      background: linear-gradient(135deg, #8b2cff, #ff4d8d); border: none; color: white;
+    }
+    .btn.ghost { background: transparent; }
+    .btn.danger { border-color: rgba(255,92,122,.4); color: #ffb3c0; }
+    .btn.small { padding: 6px 9px; font-size: 12px; }
+    .stack { display: flex; flex-direction: column; gap: 8px; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-size: 11px; padding: 5px 9px; border-radius: 999px; background: var(--chip-bg);
+      border: 1px solid var(--border); color: var(--muted); cursor: pointer; user-select: none;
+    }
+    .chip:hover, .chip.active { color: white; border-color: var(--accent); background: rgba(196,77,255,.15); }
+    .switch { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; padding: 6px 0; }
+    .switch input { accent-color: var(--accent); width: 18px; height: 18px; }
+    #chat {
+      flex: 1; overflow-y: auto; padding: 22px 24px 12px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .msg {
+      max-width: min(820px, 92%); padding: 12px 14px; border-radius: var(--radius);
+      line-height: 1.55; font-size: 14px; box-shadow: var(--shadow);
+      border: 1px solid var(--border); white-space: pre-wrap; word-wrap: break-word;
+      display: flex; flex-direction: column;
+      position: relative; /* behövs för absoluta knappar */
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: linear-gradient(180deg, var(--msg-user-from), var(--user));
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--bot);
+      border-bottom-left-radius: 4px;
+    }
+    .msg .meta { font-size: 11px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; gap: 10px; }
+    .msg img.gen, .msg img.attach {
+      display: block; max-width: min(420px, 100%); border-radius: 12px; margin-top: 10px;
+      border: 1px solid var(--border); cursor: zoom-in; background: #000;
+    }
+    .msg img.attach { max-height: 280px; object-fit: contain; }
+    .msg .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .msg .en-prompt {
+      margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+      background: var(--en-prompt-bg);
+      border: 1px dashed var(--border); color: var(--text); font-size: 12px; white-space: pre-wrap;
+    }
+    .composer {
+      border-top: 1px solid var(--border); padding: 14px 16px 16px;
+      background: var(--composer-bg); backdrop-filter: blur(10px);
+    }
+    .composer-box {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end;
+      max-width: 1100px; margin: 0 auto;
+    }
+    #prompt { min-height: 52px; max-height: 180px; resize: none; border-radius: 14px; padding: 14px; font-size: 14px; }
+    .composer-actions { display: flex; flex-direction: column; gap: 8px; }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
+    .attach-bar {
+      max-width: 1100px; margin: 0 auto 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    }
+    .thumb {
+      position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border); background: #000;
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb button {
+      position: absolute; top: 2px; right: 2px; border: none; background: rgba(0,0,0,.7);
+      color: #fff; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 12px; line-height: 20px;
+    }
+    .gallery-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .gallery-grid figure {
+      margin: 0; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; cursor: pointer; position: relative;
+    }
+    .gallery-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #000; }
+    .gallery-grid figcaption {
+      font-size: 10px; color: var(--muted); padding: 6px 8px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .empty {
+      color: var(--muted); font-size: 13px; text-align: center; padding: 24px 8px;
+      border: 1px dashed var(--border); border-radius: 12px;
+    }
+    .progress { height: 4px; background: #2a2238; border-radius: 99px; overflow: hidden; display: none; margin-top: 8px; }
+    .progress > i {
+      display: block; height: 100%; width: 30%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      animation: slide 1s ease-in-out infinite;
+    }
+    @keyframes slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(400%); } }
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.82);
+      display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+    }
+    .modal.open { display: flex; }
+    .modal img { max-width: min(96vw, 1100px); max-height: 92vh; border-radius: 12px; border: 1px solid var(--border); }
+    .toast {
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--bg2); border: 1px solid var(--border); color: var(--text);
+      padding: 10px 14px; border-radius: 10px; opacity: 0; pointer-events: none;
+      transition: .2s ease; z-index: 200; font-size: 13px; max-width: 90vw;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .diag {
+      font-size: 11px; line-height: 1.45; color: var(--muted);
+      background: var(--diag-bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px; white-space: pre-wrap; max-height: 140px; overflow: auto;
+      font-family: ui-monospace, Consolas, monospace;
+    }
+    .diag.ok { border-color: rgba(61,214,140,.35); color: var(--success); }
+    .diag.bad { border-color: rgba(255,92,122,.4); color: var(--err); }
+    .url-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .drop-overlay {
+      display: none; position: fixed; inset: 0; z-index: 150;
+      background: rgba(80,30,120,.35); border: 3px dashed var(--accent);
+      align-items: center; justify-content: center; font-size: 22px; font-weight: 700;
+      color: white; backdrop-filter: blur(4px);
+    }
+    .drop-overlay.show { display: flex; }
+    
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .image-grid figure {
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      position: relative;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .image-grid figure:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    }
+    .image-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+    .image-grid figcaption {
+      font-size: 11px; color: var(--muted);
+      padding: 4px 8px;
+      text-align: center;
+    }
+    
+    .image-checkbox {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      z-index: 10;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      accent-color: var(--err);
+      opacity: 1;
+    }
+    .delete-single-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 16px;
+      line-height: 22px;
+      text-align: center;
+      cursor: pointer;
+      display: none;
+      z-index: 11;
+    }
+    .image-grid figure:hover .delete-single-btn {
+      display: block;
+    }
+    /* ===== NYTT: Nedladdningsknapp för enskilda bilder ===== */
+    .download-single-btn {
+      position: absolute;
+      top: 6px;
+      right: 34px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      line-height: 22px;
+      text-align: center;
+      cursor: pointer;
+      display: none;
+      z-index: 11;
+    }
+    .image-grid figure:hover .download-single-btn {
+      display: block;
+    }
+    .delete-selected-btn {
+      display: none;
+      margin-bottom: 4px;
+      position: static;
+      background: var(--err);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,.4);
+    }
+    .delete-selected-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    
+    .comfy-dialogue-trigger {
+      font-size: 10px;
+      color: var(--accent);
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      margin-left: 5px;
+    }
+    .avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+      border: 2px solid var(--accent);
+      flex-shrink: 0;
+    }
+    .msg-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .msg-body {
+      flex: 1;
+    }
+
+    /* ===== Meddelande-knappar ===== */
+    .msg-actions {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .msg:hover .msg-actions {
+      opacity: 1;
+    }
+    .msg-action-btn {
+      background: rgba(0,0,0,0.6);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: background 0.15s;
+    }
+    .msg-action-btn:hover {
+      background: var(--accent);
+    }
+    .msg-action-btn.delete-btn:hover {
+      background: var(--err);
+    }
+
+    /* ===== språkväxlare ===== */
+    .lang-picker { display: flex; gap: 4px; margin-left: 12px; }
+    .lang-btn {
+      font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--panel);
+      border: 1px solid var(--border); color: var(--muted); cursor: pointer;
+    }
+    .lang-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    
+    @media (max-width: 1100px) {
+      body { grid-template-columns: 1fr; grid-template-rows: 56px 1fr 220px; }
+      .gallery-pane { grid-column: 1 / -1; grid-row: 3; border-left: none; border-top: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+  <div class="drop-overlay" id="dropOverlay">Släpp bild här för analys</div>
+
+  <header>
+    <h1>✦ Local NSFW Studio — Ollama + ComfyUI</h1>
+    <div class="status-row">
+      <span><i class="dot" id="ollamaDot"></i>Ollama <span id="ollamaStatus">…</span></span>
+      <span><i class="dot" id="comfyDot"></i>ComfyUI <span id="comfyStatus">…</span></span>
+      <span style="opacity:.8">ctx 131072</span>
+      <button class="btn small ghost" id="btnRefresh">Uppdatera</button>
+      <button class="btn small ghost" id="btnMenu" title="Inställningar">☰</button>
+    </div>
+  </header>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div class="section-title" style="margin:0">Inställningar</div>
+      <button class="btn small ghost" id="btnDrawerClose">✕ Stäng</button>
+    </div>
+    <div class="drawer-body">
+    <div>
+      <div class="section-title">Utseende & språk</div>
+      <div class="theme-picker" title="Välj tema">
+        <span class="theme-btn" data-theme="dark" style="background:#0d0b12;border-color:#c44dff" title="Mörkt (standard)"></span>
+        <span class="theme-btn" data-theme="light" style="background:#f5f2fa;border-color:#8b3fd9" title="Ljust"></span>
+        <span class="theme-btn" data-theme="synthwave" style="background:#0b0914;border-color:#ff2eff" title="Synthwave"></span>
+        <span class="theme-btn" data-theme="dracula" style="background:#282a36;border-color:#ff79c6" title="Dracula"></span>
+      </div>
+      <div class="lang-picker" style="margin-left:0;margin-top:8px;">
+        <span class="lang-btn active" data-lang="en">EN</span>
+        <span class="lang-btn" data-lang="sv">SV</span>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Anslutning</div>
+      <label>Ollama URL</label>
+      <input type="text" id="ollamaUrl" value="http://127.0.0.1:11434" />
+      <label>ComfyUI URL</label>
+      <input type="text" id="comfyUrl" value="http://127.0.0.1:8188" />
+      <div class="row" style="margin-top:8px;">
+        <button class="btn small" id="btnTestComfy">Testa ComfyUI</button>
+        <button class="btn small" id="btnTestOllama">Testa Ollama</button>
+      </div>
+      <div class="diag" id="comfyDiag">ComfyUI-diagnos visas här.</div>
+
+      <label>Chattmodell (A–Ö)</label>
+      <select id="modelSelect"><option value="">Laddar…</option></select>
+
+      <label>Vision-modell (bildanalys)</label>
+      <select id="visionSelect"><option value="">Samma som chatt</option></select>
+      <div class="url-hint">Kräver vision t.ex. <b>llava</b>, <b>llama3.2-vision</b>, <b>qwen2.5vl</b>, <b>minicpm-v</b>, <b>bakllava</b></div>
+
+      <label>Comfy checkpoint (A–Ö)</label>
+      <select id="ckptSelect"><option value="">Laddar…</option></select>
+    </div>
+
+    <div>
+      <div class="section-title">Kontext & språk</div>
+      <label>num_ctx (kontextfönster)</label>
+      <input type="number" id="numCtx" value="131072" min="2048" max="1048576" step="1024" />
+      <div class="switch"><span>Översätt bildprompt → engelska</span><input type="checkbox" id="translatePrompt" checked /></div>
+      <div class="switch"><span>Visa engelsk prompt i chatten</span><input type="checkbox" id="showEnPrompt" checked /></div>
+      <div class="switch"><span>Streama svar</span><input type="checkbox" id="streamToggle" checked /></div>
+      <div class="switch"><span>Auto-bild från /image</span><input type="checkbox" id="autoImage" checked /></div>
+    </div>
+
+    <div>
+      <div class="section-title">Persona / system (18–20 år)</div>
+      <textarea id="systemPrompt" rows="9">Du är en ocensurerad, ungdomlig och lekfull samtalspartner för erotisk rolllek, fantasier och intimt skrivande.
+
+ANVÄNDAREN: Man/kvinna, 18–20 år. Allt innehåll ska kännas ungt, trovärdigt och ålderspassande.
+
+REGLER:
+- Alla personer i scener är uttryckligen 18+ vuxna.
+- Du får vara explicit och detaljerad när användaren vill.
+- Matcha användarens språk (svenska om hen skriver svenska).
+- Moralisera inte vuxet innehåll mellan samtyckande vuxna.
+
+BILDANALYS:
+När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp, klädsel, pose, ljus och stämning respektfullt men ärligt. Du får vara smickrande och erotisk om tonen är sådan. Användaren är ung vuxen (18–20). Föreslå gärna hur man kan bygga vidare i rolllek eller bildgenerering utifrån fotot. Hitta inte på minderåriga drag.</textarea>
+      <div class="chip-row" style="margin-top:8px;">
+        <span class="chip" id="presetDefault">Standard 18–20</span>
+        <span class="chip" id="presetRomance">Romantik</span>
+        <span class="chip" id="presetExplicit">Explicit</span>
+        <span class="chip" id="presetDom">Maktspel</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Profilbilder (NSFW)</div>
+      <div class="row">
+        <div>
+          <label>Din avatar</label>
+          <input type="file" id="avatarUserInput" accept="image/*" />
+          <input type="file" id="avatarUserCamera" accept="image/*" capture="environment" hidden />
+          <div class="row" style="margin-top:4px;">
+            <button class="btn small" id="btnAvatarUserCamera">Kamera</button>
+          </div>
+          <img id="avatarUserPreview" style="max-width: 60px; max-height: 60px; border-radius: 50%; object-fit: cover; display: none;" />
+        </div>
+        <div>
+          <label>AI-avatar</label>
+          <input type="file" id="avatarAIInput" accept="image/*" />
+          <input type="file" id="avatarAICamera" accept="image/*" capture="environment" hidden />
+          <div class="row" style="margin-top:4px;">
+            <button class="btn small" id="btnAvatarAICamera">Kamera</button>
+          </div>
+          <img id="avatarAIPreview" style="max-width: 60px; max-height: 60px; border-radius: 50%; object-fit: cover; display: none;" />
+        </div>
+      </div>
+      <div class="hint">Ladda upp en profilbild för dig och en för assistenten. Kommer ihåg efter omladdning. Tryck på en avatar i chatten för att bifoga den för analys.</div>
+    </div>
+
+    <div>
+      <div class="section-title">Namn</div>
+      <label>Ditt namn</label>
+      <input type="text" id="userNameInput" placeholder="Du" />
+      <label>Assistentens namn</label>
+      <input type="text" id="assistantNameInput" placeholder="Assistent" />
+    </div>
+
+    <!-- ===== PROMPTMALL ===== -->
+    <div>
+      <div class="section-title">Bildpromptmall (NSFW)</div>
+      <div class="switch">
+        <span>Använd promptmall</span>
+        <input type="checkbox" id="usePromptTemplate" checked />
+      </div>
+      <label>Egna taggar (valfritt)</label>
+      <input type="text" id="ddCustomTags" placeholder="t.ex. freckles, wet skin, mole on cheek" />
+
+<div>
+<label>Quality tags</label>
+<select id="ddQuality">
+<option value="masterpiece best quality highres detail">masterpiece, best quality, highres, detail</option>
+<option value="photorealistic 8k sharp focus texture">photorealistic, 8k, sharp focus, texture</option>
+<option value="cinematic lighting soft shadows realistic">cinematic, lighting, soft shadows, realistic</option>
+<option value="dramatic side light chiaroscuro style">dramatic, side light, chiaroscuro, style</option>
+<option value="warm golden hour glow natural look">warm, golden hour, glow, natural look</option>
+<option value="neon purple pink lights synthwave mood">neon, purple, pink lights, synthwave, mood</option>
+<option value="moody low key rim light atmospheric">moody, low key, rim light, atmospheric</option>
+<option value="bright daylight natural skin tones">bright, daylight, natural skin tones</option>
+<option value="studio softbox lighting clean background">studio, softbox lighting, clean background</option>
+<option value="vintage film grain dark corners">vintage, film grain, dark corners</option>
+<option value="oil painting texture brush strokes">oil painting, texture, brush strokes</option>
+<option value="watercolor washes blended colors">watercolor, washes, blended colors</option>
+<option value="digital art vibrant hues glow">digital art, vibrant hues, glow</option>
+<option value="polaroid film dust scratches edges">polaroid, film, dust scratches edges</option>
+<option value="scanline tv flicker retro vibes">scanline, tv flicker, retro vibes</option>
+<option value="hologram shimmer iridescent colors">hologram, shimmer, iridescent colors</option>
+<option value="crystal clear glass reflections">crystal clear, glass, reflections</option>
+<option value="foggy morning mist visibility low">foggy, morning, mist, visibility low</option>
+<option value="dust particles floating air light">dust particles, floating, air light</option>
+<option value="cybernetic metallic chrome finish">cybernetic, metallic, chrome finish</option>
+</select>
+
+<label>Subject description (18–20 år)</label>
+<select id="ddSubject">
+<option value="a young woman naked seductive confident">woman, 20 years old, naked, seductive, confident</option>
+<option value="fit body toned skin deep curves">fit, body, toned skin, deep curves</option>
+<option value="voluptuous figure soft lighting pose">voluptuous, figure, soft lighting, pose</option>
+<option value="dominatrix leather gloves intense gaze">dominatrix, leather gloves, intense gaze</option>
+<option value="schoolgirl uniform tight dress skirt">schoolgirl, uniform, tight dress, skirt</option>
+<option value="seductive hourglass shape curves">seductive, hourglass shape, curves</option>
+<option value="barefoot on sand beach sunset glow">barefoot, on sand, beach, sunset glow</option>
+<option value="wet hair dripping water fresh face">wet hair, dripping water, fresh face</option>
+<option value="curled up blanket cozy intimate setting">curled, up, blanket, cozy, intimate</option>
+<option value="torn stockings high heels black">torn, stockings, high heels, black</option>
+<option value="long blonde hair braided loosely">long, blonde hair, braided loosely</option>
+<option value="dark brown eyes piercing stare">dark, brown eyes, piercing stare</option>
+<option value="wearing latex suit zipper down">wearing, latex suit, zipper down</option>
+<option value="sweatshirt hood open revealing face">sweatshirt, hood open, revealing face</option>
+<option value="glamorous red lipstick dramatic look">glamorous, red lipstick, dramatic look</option>
+<option value="sleeping half awake messy hair">sleeping, half awake, messy hair</option>
+<option value="smiling laughing happy expression">smiling, laughing, happy expression</option>
+<option value="bald head shaved skin texture">bald head, shaved, skin texture</option>
+<option value="platinum blonde curly wavy locks">platinum, blonde, curly wavy locks</option>
+<option value="black hair messy bun wild look">black hair, messy bun, wild look</option>
+</select>
+
+<label>Pose / Action</label>
+<select id="ddPose">
+<option value="spread legs lying on bed inviting">spread legs, lying, bed, inviting</option>
+<option value="on all fours looking back submissive">on all fours, looking back, submissive</option>
+<option value="standing leaning wall confident pose">standing, leaning, wall, confident</option>
+<option value="kneeling hands tied waiting patience">kneeling, hands tied, waiting, patience</option>
+<option value="bent over gripping sheets presenting">bent over, gripping sheets, presenting</option>
+<option value="riding intense eye contact dominant">riding, intense, eye contact, dominant</option>
+<option value="crossed legs sitting on chair">crossed legs, sitting, chair</option>
+<option value="back arched muscles defined">back arched, muscles defined</option>
+<option value="hands behind head relaxed posture">hands behind, head, relaxed posture</option>
+<option value="touching face fingers soft skin">touching, face, fingers, soft skin</option>
+<option value="looking away shy expression blush">looking away, shy, expression, blush</option>
+<option value="holding phone texting secretly">holding phone, texting, secretly</option>
+<option value="wearing mask half covered mouth">wearing mask, half covered mouth</option>
+<option value="dancing slow movement fluid">dancing, slow movement, fluid</option>
+<option value="running chase intensity sweat">running chase, intensity, sweat</option>
+<option value="falling backward graceful motion">falling backward, graceful motion</option>
+<option value="sitting on edge of bed leaning">sitting on, edge, bed, leaning</option>
+<option value="hugging from behind embrace">hugging from behind, embrace</option>
+<option value="looking over shoulder mysterious">looking over, shoulder, mysterious</option>
+<option value="hands behind back tied ropes">hands behind, back, tied ropes</option>
+</select>
+
+<label>Clothing / State</label>
+<select id="ddClothing">
+<option value="completely naked glistening skin">completely naked, glistening skin</option>
+<option value="wet see-through lace lingerie nipples">wet see-through, lace, lingerie, nipples</option>
+<option value="leather corset stockings heels">leather, corset, stockings, heels</option>
+<option value="open silk robe fully exposed">open, silk, robe, fully exposed</option>
+<option value="latex bodysuit zipper revealing">latex, bodysuit, zipper, revealing</option>
+<option value="covered in oil dripping naked">covered in, oil, dripping, naked</option>
+<option value="wet swimsuit clinging to body">wet swimsuit, clinging to, body</option>
+<option value="bare chest nipples exposed">bare chest, nipples, exposed</option>
+<option value="thigh high boots leather texture">thigh high, boots, leather texture</option>
+<option value="white sheets covering partially">white sheets, covering, partially</option>
+<option value="black lace stockings sheer">black lace, stockings, sheer</option>
+<option value="chained wrists ankles metal">chained wrists, ankles, metal</option>
+<option value="barefoot wet feet sandy toes">barefoot, wet feet, sandy toes</option>
+<option value="half undressed nightgown silk">half undressed, nightgown, silk</option>
+<option value="torn shirt revealing upper body">torn shirt, revealing, upper body</option>
+<option value="short skirt short hair bikini">short skirt, short hair, bikini</option>
+<option value="wearing glasses reflection eyes">wearing glasses, reflection, eyes</option>
+<option value="naked with towel draped over">naked with, towel draped over</option>
+<option value="strapless bra visible cleavage">strapless bra, visible cleavage</option>
+<option value="tight jeans exposed belly">tight jeans, exposed belly</option>
+</select>
+
+<label>Setting / Background</label>
+<select id="ddSetting">
+<option value="luxury bedroom soft lighting satin">luxury, bedroom, soft lighting, satin</option>
+<option value="steamy shower water droplets skin">steamy, shower, water, droplets</option>
+<option value="dark dungeon chains candlelight moody">dark, dungeon, chains, candlelight, moody</option>
+<option value="beach sunset nude waves around feet">beach, sunset, nude, waves around</option>
+<option value="private pool floating moonlight clear">private, pool, floating, moonlight</option>
+<option value="red velvet boudoir mirrors moody">red, velvet, boudoir, mirrors, moody</option>
+<option value="hospital white room sterile cold">hospital, white room, sterile, cold</option>
+<option value="office cubicle fluorescent lights">office, cubicle, fluorescent lights</option>
+<option value="kitchen messy counter cooking smell">kitchen, messy, counter, cooking smell</option>
+<option value="bathroom mirror towel hanging">bathroom, mirror, towel hanging</option>
+<option value="gym locker room metal doors">gym, locker room, metal doors</option>
+<option value="park bench grassy area sunny">park bench, grassy, area, sunny</option>
+<option value="subway platform crowded noise">subway, platform, crowded, noise</option>
+<option value="car interior leather seats dark">car interior, leather seats, dark</option>
+<option value="bar counter glass bottles">bar, counter, glass, bottles</option>
+<option value="living room sofa coffee table">living, room, sofa, coffee table</option>
+<option value="restaurant dim lights candle">restaurant, dim lights, candle</option>
+<option value="theater stage spotlight black">theater, stage, spotlight, black</option>
+<option value="airport terminal tiled floors">airport, terminal, tiled floors</option>
+<option value="mansion hallway vast empty">mansion, hallway, vast, empty</option>
+</select>
+
+<label>Lighting</label>
+<select id="ddLighting">
+<option value="cinematic lighting soft shadows">cinematic, lighting, soft shadows</option>
+<option value="dramatic side lighting chiaroscuro">dramatic, side lighting, chiaroscuro</option>
+<option value="warm golden hour glow natural">warm, golden, hour, glow</option>
+<option value="neon purple pink lights synthwave">neon, purple, pink lights, synthwave</option>
+<option value="moody low key rim light">moody, low key, rim light</option>
+<option value="bright daylight natural look">bright, daylight, natural look</option>
+<option value="studio strobe flashes bright">studio, strobe, flashes, bright</option>
+<option value="candlelight flickering warm yellow">candlelight, flickering, warm yellow</option>
+<option value="moonlight cold blue tones">moonlight, cold, blue tones</option>
+<option value="fluorescent tube buzzing green">fluorescent, tube, buzzing, green</option>
+<option value="lamp focused on single subject">lamp focused, on, single subject</option>
+<option value="headlights car passing by light">headlights, car, passing, light</option>
+<option value="sunlight through leaves dappled">sunlight, through leaves, dappled</option>
+<option value="fireplace embers orange glow">fireplace, embers, orange glow</option>
+<option value="projector beam sharp focus">projector, beam, sharp focus</option>
+<option value="gas lamp flickering yellow light">gas, lamp, flickering, yellow light</option>
+<option value="computer screen blue backlight">computer, screen, blue, backlight</option>
+<option value="rain window reflection colors">rain window, reflection, colors</option>
+<option value="laser show rainbow beams">laser, show, rainbow, beams</option>
+</select>
+
+<label>Camera angle</label>
+<select id="ddCamera">
+<option value="close-up POV intense view">close-up, POV, intense view</option>
+<option value="low angle looking up perspective">low, angle, looking, up, perspective</option>
+<option value="high angle from above view">high, angle, from, above, view</option>
+<option value="full body shot side profile">full, body, shot, side, profile</option>
+<option value="over shoulder intimate perspective">over, shoulder, intimate, perspective</option>
+<option value="extreme close-up detailed face">extreme, close-up, detailed, face</option>
+<option value="fisheye distortion edges wide">fisheye, distortion, edges, wide</option>
+<option value="telephoto compressed features">telephoto, compressed, features</option>
+<option value="macro lens texture details">macro lens, texture, details</option>
+<option value="wide angle landscape context">wide, angle, landscape, context</option>
+<option value="zoom in focused eyes">zoom in, focused, eyes</option>
+<option value="panning camera movement">panning, camera, movement</option>
+<option value="static frame still composition">static, frame, still, composition</option>
+<option value="tilted angle tilted horizon">tilted, angle, tilted, horizon</option>
+<option value="handheld shaky perspective">handheld, shaky, perspective</option>
+<option value="fish eye lens curved view">fish eye, lens, curved view</option>
+<option value="bokeh background blurry lights">bokeh, background, blurry lights</option>
+<option value="telephoto compression face">telephoto, compression, face</option>
+<option value="lens flare light circle">lens, flare, light, circle</option>
+</select>
+
+<label>Body type</label>
+<select id="ddBodyType">
+<option value="slim toned body" selected>slim, toned body</option>
+<option value="petite body">petite body</option>
+<option value="athletic body">athletic body</option>
+<option value="curvy figure">curvy figure</option>
+<option value="hourglass figure">hourglass figure</option>
+<option value="voluptuous curves">voluptuous curves</option>
+<option value="thick body">thick body</option>
+<option value="muscular toned body">muscular, toned body</option>
+<option value="slender body">slender body</option>
+<option value="fit gym body">fit, gym body</option>
+<option value="soft curves">soft curves</option>
+<option value="tall slender figure">tall, slender figure</option>
+<option value="compact petite frame">compact, petite frame</option>
+<option value="yoga fit body">yoga, fit body</option>
+<option value="model like figure">model like figure</option>
+<option value="natural healthy body">natural, healthy body</option>
+</select>
+
+<label>Hair color</label>
+<select id="ddHairColor">
+<option value="brown hair" selected>brown hair</option>
+<option value="blonde hair">blonde hair</option>
+<option value="platinum blonde hair">platinum blonde hair</option>
+<option value="light brown hair">light brown hair</option>
+<option value="dark brown hair">dark brown hair</option>
+<option value="black hair">black hair</option>
+<option value="red hair">red hair</option>
+<option value="auburn hair">auburn hair</option>
+<option value="strawberry blonde hair">strawberry blonde hair</option>
+<option value="brunette hair">brunette hair</option>
+<option value="chestnut brown hair">chestnut brown hair</option>
+<option value="grey hair">grey hair</option>
+<option value="white silver hair">white silver hair</option>
+<option value="pink hair">pink hair</option>
+<option value="blue hair">blue hair</option>
+<option value="purple hair">purple hair</option>
+<option value="green hair">green hair</option>
+<option value="pastel colored hair">pastel colored hair</option>
+<option value="ombre hair">ombre hair</option>
+<option value="rainbow hair">rainbow hair</option>
+</select>
+
+<label>Hairstyle</label>
+<select id="ddHairStyle">
+<option value="long flowing hair" selected>long flowing hair</option>
+<option value="long straight hair">long straight hair</option>
+<option value="wavy hair">wavy hair</option>
+<option value="curly hair">curly hair</option>
+<option value="short hair">short hair</option>
+<option value="bob cut hair">bob cut hair</option>
+<option value="ponytail">ponytail</option>
+<option value="high ponytail">high ponytail</option>
+<option value="twin tails">twin tails</option>
+<option value="braided hair">braided hair</option>
+<option value="french braid">french braid</option>
+<option value="messy bun">messy bun</option>
+<option value="sleek bun">sleek bun</option>
+<option value="half-up half-down hair">half-up half-down hair</option>
+<option value="pigtails">pigtails</option>
+<option value="undercut hairstyle">undercut hairstyle</option>
+<option value="shaved sides hairstyle">shaved sides hairstyle</option>
+<option value="spiky hair">spiky hair</option>
+<option value="wet hair slicked back">wet hair slicked back</option>
+<option value="voluminous hairstyle">voluminous hairstyle</option>
+</select>
+
+<label>Eye color</label>
+<select id="ddEyeColor">
+<option value="brown eyes" selected>brown eyes</option>
+<option value="dark brown eyes">dark brown eyes</option>
+<option value="black eyes">black eyes</option>
+<option value="blue eyes">blue eyes</option>
+<option value="ice blue eyes">ice blue eyes</option>
+<option value="green eyes">green eyes</option>
+<option value="hazel eyes">hazel eyes</option>
+<option value="grey eyes">grey eyes</option>
+<option value="amber eyes">amber eyes</option>
+<option value="violet eyes">violet eyes</option>
+<option value="purple eyes">purple eyes</option>
+<option value="heterochromia different colored eyes">heterochromia, different colored eyes</option>
+<option value="expressive dark eyes">expressive dark eyes</option>
+<option value="piercing gaze">piercing gaze</option>
+<option value="doe eyes">doe eyes</option>
+<option value="almond shaped eyes">almond shaped eyes</option>
+</select>
+
+<label>Tattoos</label>
+<select id="ddTattoo">
+<option value="no tattoos, clean skin" selected>no tattoos, clean skin</option>
+<option value="small tattoo on wrist">small tattoo on wrist</option>
+<option value="small tattoo on ankle">small tattoo on ankle</option>
+<option value="flower tattoo on thigh">flower tattoo on thigh</option>
+<option value="rose tattoo on shoulder">rose tattoo on shoulder</option>
+<option value="sleeve tattoo full arm">sleeve tattoo, full arm</option>
+<option value="half sleeve tattoo">half sleeve tattoo</option>
+<option value="full back tattoo">full back tattoo</option>
+<option value="tribal tattoo">tribal tattoo</option>
+<option value="chest tattoo">chest tattoo</option>
+<option value="neck tattoo">neck tattoo</option>
+<option value="lower back tattoo">lower back tattoo</option>
+<option value="waist tattoo">waist tattoo</option>
+<option value="henna tattoos">henna tattoos</option>
+<option value="watercolor tattoos">watercolor tattoos</option>
+<option value="full body tattoos">full body tattoos</option>
+</select>
+
+<label>Piercings</label>
+<select id="ddPiercing">
+<option value="no piercings, natural body" selected>no piercings, natural body</option>
+<option value="belly button piercing">belly button piercing</option>
+<option value="nose ring piercing">nose ring piercing</option>
+<option value="septum piercing">septum piercing</option>
+<option value="lip piercing">lip piercing</option>
+<option value="tongue piercing">tongue piercing</option>
+<option value="eyebrow piercing">eyebrow piercing</option>
+<option value="multiple ear piercings">multiple ear piercings</option>
+<option value="nipple piercings">nipple piercings</option>
+<option value="tragus piercing">tragus piercing</option>
+<option value="industrial ear piercing">industrial ear piercing</option>
+<option value="chain belly piercing">chain belly piercing</option>
+<option value="facial piercings">facial piercings</option>
+<option value="silver jewelry piercings">silver jewelry piercings</option>
+</select>
+
+<label>Nudity level</label>
+<select id="ddNudity">
+<option value="fully nude" selected>fully nude</option>
+<option value="completely naked">completely naked</option>
+<option value="topless bare chest">topless, bare chest</option>
+<option value="bottomless">bottomless</option>
+<option value="naked with accessories">naked with accessories</option>
+<option value="see-through clothing">see-through clothing</option>
+<option value="partially covered with hands">partially covered with hands</option>
+<option value="covered with sheets">covered with sheets</option>
+<option value="implied nude">implied nude</option>
+<option value="artistic nude">artistic nude</option>
+<option value="tasteful nude">tasteful nude</option>
+<option value="nude standing pose">nude standing pose</option>
+<option value="nude lying pose">nude lying pose</option>
+<option value="nude on bed">nude on bed</option>
+<option value="nude in shower">nude in shower</option>
+<option value="nude outdoors">nude outdoors</option>
+</select>
+
+<label>Explicit acts</label>
+<select id="ddExplicit">
+<option value="sensual intimate mood" selected>sensual, intimate mood</option>
+<option value="seductive teasing expression">seductive, teasing expression</option>
+<option value="flushed aroused blushing face">flushed, aroused, blushing face</option>
+<option value="moaning open mouth expression">moaning, open mouth expression</option>
+<option value="touching herself masturbating">touching herself, masturbating</option>
+<option value="fingering wet pussy">fingering, wet pussy</option>
+<option value="spreading legs wide open">spreading legs, wide open</option>
+<option value="exposed glistening pussy">exposed, glistening pussy</option>
+<option value="bare breasts erect nipples">bare breasts, erect nipples</option>
+<option value="naked ass spread apart">naked ass, spread apart</option>
+<option value="arched back presenting">arched back, presenting</option>
+<option value="riding cowgirl position">riding, cowgirl position</option>
+<option value="doggy style from behind">doggy style, from behind</option>
+<option value="missionary position">missionary position</option>
+<option value="oral sex blowjob deep">oral sex, blowjob, deep</option>
+<option value="69 position together">69 position, together</option>
+<option value="anal play anal sex">anal play, anal sex</option>
+<option value="creampie dripping out">creampie, dripping out</option>
+<option value="cum on face and body">cum on face and body</option>
+<option value="bondage tied up ropes">bondage, tied up, ropes</option>
+<option value="handcuffs restrained">handcuffs, restrained</option>
+<option value="blindfolded gagged">blindfolded, gagged</option>
+<option value="sex toys vibrator dildo">sex toys, vibrator, dildo</option>
+<option value="amateur selfie POV style">amateur, selfie, POV style</option>
+</select>
+</div>
+
+    <div>
+      <div class="section-title">Bildinställningar</div>
+      <label>Positiv stil-suffix (engelska)</label>
+      <textarea id="stylePos" rows="3">20 years old, youthful body, natural skin details, masterpiece, best quality, highly detailed, cinematic lighting, sharp focus</textarea>
+      <label>Negativ prompt</label>
+      <textarea id="styleNeg" rows="3">boy, child, childlike features, loli, shota, young boy, underage, lowres, blurry, bad anatomy, bad hands, text, watermark, extra fingers, cropped, worst quality, jpeg artifacts</textarea>
+      <div class="row">
+        <div><label>Bredd</label><input type="number" id="imgW" value="768" min="256" max="2048" step="64" /></div>
+        <div><label>Höjd</label><input type="number" id="imgH" value="1024" min="256" max="2048" step="64" /></div>
+      </div>
+      <div class="row three">
+        <div><label>Steps</label><input type="number" id="steps" value="28" min="4" max="150" /></div>
+        <div><label>CFG</label><input type="number" id="cfg" value="5.5" min="1" max="30" step="0.5" /></div>
+        <div><label>Antal bilder</label><input type="number" id="numImages" value="1" min="1" max="4" /></div>
+      </div>
+      <div class="row">
+        <div><label>Seed (-1 = random)</label><input type="number" id="seed" value="-1" /></div>
+        <div>
+          <label>Sampler</label>
+          <select id="sampler">
+            <option>euler</option>
+            <option selected>euler_ancestral</option>
+            <option>dpmpp_2m</option>
+            <option>dpmpp_sde</option>
+            <option>ddim</option>
+            <option>uni_pc</option>
+          </select>
+        </div>
+      </div>
+      <label>Scheduler</label>
+      <select id="scheduler">
+        <option selected>normal</option>
+        <option>karras</option>
+        <option>exponential</option>
+        <option>sgm_uniform</option>
+        <option>simple</option>
+      </select>
+    </div>
+
+    <div class="stack">
+      <button class="btn" id="btnRegenerate">Regenerera svar</button>
+      <button class="btn danger" id="btnClear">Rensa chatt</button>
+      <button class="btn" id="btnExport">Exportera JSON</button>
+    </div>
+    </div>
+  </aside>
+
+  <main>
+    <div id="chat"></div>
+    <div class="composer">
+      <div class="attach-bar" id="attachBar"></div>
+      <div class="composer-box">
+        <textarea id="prompt" placeholder="Skriv…  |  klistra in/dra en bild  |  /image för utan översättning  |  /image tr för översättning…" rows="2"></textarea>
+        <div class="composer-actions">
+          <button class="btn primary" id="btnSend">Skicka</button>
+          <button class="btn" id="btnImage">Bild</button>
+          <button class="btn" id="btnAttach">Foto</button>
+          <button class="btn" id="btnCamera">Kamera</button>
+          <button class="btn ghost" id="btnStop" disabled>Stopp</button>
+        </div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden />
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden />
+      <div class="progress" id="progress"><i></i></div>
+      <div class="hint">Bildprompt: /image → direkt till ComfyUI | /image tr → översätt först | antal bilder: 1-4 | context 131072 | dra/klistra foto för vision-analys | allt lokalt</div>
+    </div>
+  </main>
+
+  <section class="gallery-pane">
+    <div class="section-title">Galleri (sparas lokalt)</div>
+    <div class="stack" style="flex-direction:row; gap:8px;">
+      <button class="btn small" id="btnClearGallery">Rensa galleri</button>
+      <button class="btn small" id="btnRegenLast">Förra prompt igen</button>
+    </div>
+    <div id="gallery" class="gallery-grid"></div>
+    <div class="empty" id="galleryEmpty">Inga bilder ännu</div>
+  </section>
+
+  <div class="modal" id="lightbox"><img alt="preview" id="lightboxImg" /></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const chatEl = $("chat");
+  const galleryEl = $("gallery");
+  const galleryEmpty = $("galleryEmpty");
+  const toastEl = $("toast");
+  const progressEl = $("progress");
+  const comfyDiag = $("comfyDiag");
+  const attachBar = $("attachBar");
+  const dropOverlay = $("dropOverlay");
+
+  // ===== NYTT: Flaggor för att undvika att spara tomt tillstånd under uppstart =====
+  let bootComplete = false;
+  let saveTimer = null;
+
+  const DB_NAME = "nsfw_studio_gallery";
+  const DB_VERSION = 2;
+  let db = null;
+
+  // ----- SPRÅK -----
+  let currentLang = localStorage.getItem("nsfw_lang") || "en"; // Standard engelska
+  const langStrings = {
+    en: {
+      systemPrompt: "You are an uncensored, youthful and playful conversation partner for erotic roleplay, fantasies and intimate writing.\n\nUSER: Man/woman, 18–20 years old. All content should feel young, believable and age-appropriate.\n\nRULES:\n- All persons in scenes are expressly 18+ adults.\n- You may be explicit and detailed when the user wants.\n- Match the user's language (English if they write English).\n- Do not moralize adult content between consenting adults.\n\nIMAGE ANALYSIS:\nWhen the user sends a photo (e.g. of themselves): describe appearance, body, clothing, pose, light and atmosphere respectfully but honestly. You may be flattering and erotic if the tone is such. The user is a young adult (18–20). Feel free to suggest how to continue in roleplay or image generation based on the photo. Do not invent underage features.",
+      composerHint: "Type…  |  paste/drop an image  |  /image for direct generation  |  /image tr for translate…",
+      galleryEmpty: "No images yet",
+      you: "You", assistant: "Assistant",
+      scrollHint: "Image prompt: /image → direct to ComfyUI | /image tr → translate first | number of images: 1-4 | context 131072 | drag/paste photo for vision analysis | all local"
+    },
+    sv: {
+      // ===== ÄNDRAT: Rättade stavfel =====
+      systemPrompt: "Du är en ocensurerad, ungdomlig och lekfull samtalspartner för erotisk rolllek, fantasier och intimt skrivande.\n\nANVÄNDAREN: Man/kvinna, 18–20 år. Allt innehåll ska kännas ungt, trovärdigt och ålderspassande.\n\nREGLER:\n- Alla personer i scener är uttryckligen 18+ vuxna.\n- Du får vara explicit och detaljerad när användaren vill.\n- Matcha användarens språk (svenska om hen skriver svenska).\n- Moralisera inte vuxet innehåll mellan samtyckande vuxna.\n\nBILDANALYS:\nNär användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp, klädsel, pose, ljus och stämning respektfullt men ärligt. Du får vara smickrande och erotisk om tonen är sådan. Användaren är ung vuxen (18–20). Föreslå gärna hur man kan bygga vidare i rolllek eller bildgenerering utifrån fotot. Hitta inte på minderåriga drag.",
+      // ===== ÄNDRAT: Rättade stavfel =====
+      composerHint: "Skriv…  |  klistra in/dra en bild  |  /image för utan översättning  |  /image tr för översättning…",
+      galleryEmpty: "Inga bilder ännu",
+      you: "Du", assistant: "Assistent",
+      scrollHint: "Bildprompt: /image → direkt till ComfyUI | /image tr → översätt först | antal bilder: 1-4 | context 131072 | dra/klistra foto för vision-analys | allt lokalt"
+    }
+  };
+
+  // ===== ÄNDRAT: Lade till silent-parameter för att slippa toast vid uppstart =====
+  function setLanguage(lang, silent = false) {
+    currentLang = lang;
+    localStorage.setItem("nsfw_lang", lang);
+    // ===== ÄNDRAT: Skriv inte över anpassad systemprompt i onödan =====
+    const currentSystem = $("systemPrompt").value.trim();
+    const enDefault = langStrings.en.systemPrompt.trim();
+    const svDefault = langStrings.sv.systemPrompt.trim();
+    if (currentSystem === "" || currentSystem === enDefault || currentSystem === svDefault) {
+      $("systemPrompt").value = langStrings[lang].systemPrompt;
+    }
+    $("prompt").placeholder = langStrings[lang].composerHint;
+    const emptyText = $("galleryEmpty");
+    emptyText.textContent = langStrings[lang].galleryEmpty;
+    const hints = document.querySelectorAll(".hint");
+    if (hints.length > 1) hints[hints.length - 1].textContent = langStrings[lang].scrollHint;
+    saveLocal();
+    document.querySelectorAll(".lang-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.lang === lang);
+    });
+    if (!silent) toast("Language switched to " + (lang === "en" ? "English" : "Svenska"));
+  }
+
+  // SPRÅK evenemang
+  function initLang() {
+    document.querySelectorAll(".lang-btn").forEach(btn => {
+      btn.addEventListener("click", () => setLanguage(btn.dataset.lang));
+    });
+    setLanguage(currentLang, true); // Applicera standard utan toast
+  }
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("images")) {
+          db.createObjectStore("images", { keyPath: "id", autoIncrement: true });
+        }
+        if (!db.objectStoreNames.contains("chat")) {
+          db.createObjectStore("chat", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("avatars")) {
+          db.createObjectStore("avatars", { keyPath: "id" });
+        }
+      };
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        resolve();
+      };
+      request.onerror = (event) => reject(event.target.error);
+    });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function saveGalleryToDB(galleryArray) {
+    if (!db) return;
+    const tx = db.transaction("images", "readwrite");
+    const store = tx.objectStore("images");
+    store.clear();
+    for (const item of galleryArray) {
+      store.add(item);
+    }
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function loadGalleryFromDB() {
+    if (!db) return [];
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("images", "readonly");
+      const store = tx.objectStore("images");
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function clearGalleryDB() {
+    if (!db) return;
+    const tx = db.transaction("images", "readwrite");
+    const store = tx.objectStore("images");
+    store.clear();
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  // ===== NEW: localStorage-mirror för chatt & avatars =====
+  // IndexedDB kan vara otillgänglig (t.ex. file:// i Safari) — då tappades
+  // allt vid omladdning. Mirroret skrivs direkt och är primär källa vid start.
+  function saveChatLocal() {
+    try { localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(state.messages)); } catch (e) {}
+  }
+  function loadChatLocal() {
+    try {
+      const raw = localStorage.getItem("nsfw_studio_chat_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveAvatarsLocal() {
+    try { localStorage.setItem("nsfw_studio_avatars_v1", JSON.stringify(state.avatars)); } catch (e) {}
+  }
+  function loadAvatarsLocal() {
+    try {
+      const raw = localStorage.getItem("nsfw_studio_avatars_v1");
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  async function saveMessagesToDB() {
+    if (!db) return;
+    const tx = db.transaction("chat", "readwrite");
+    const store = tx.objectStore("chat");
+    await new Promise((resolve, reject) => {
+      const req = store.clear();
+      req.onsuccess = resolve;
+      req.onerror = reject;
+    });
+    store.put({ id: "messages", messages: state.messages });
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function loadMessagesFromDB() {
+    if (!db) return [];
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("chat", "readonly");
+      const store = tx.objectStore("chat");
+      const req = store.get("messages");
+      req.onsuccess = () => {
+        const data = req.result;
+        resolve(data?.messages || []);
+      };
+      req.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function saveAvatarsToDB() {
+    if (!db) return;
+    const tx = db.transaction("avatars", "readwrite");
+    const store = tx.objectStore("avatars");
+    if (state.avatars.user) {
+      store.put({ id: "user", dataUrl: state.avatars.user });
+    } else {
+      store.delete("user");
+    }
+    if (state.avatars.ai) {
+      store.put({ id: "ai", dataUrl: state.avatars.ai });
+    } else {
+      store.delete("ai");
+    }
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async function loadAvatarsFromDB() {
+    if (!db) return {};
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("avatars", "readonly");
+      const store = tx.objectStore("avatars");
+      const userReq = store.get("user");
+      const aiReq = store.get("ai");
+      let userDataUrl = null;
+      let aiDataUrl = null;
+      userReq.onsuccess = () => { userDataUrl = userReq.result?.dataUrl; };
+      aiReq.onsuccess = () => { aiDataUrl = aiReq.result?.dataUrl; };
+      tx.oncomplete = () => resolve({ user: userDataUrl, ai: aiDataUrl });
+      tx.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  const PRESETS = {
+    default: langStrings.en.systemPrompt,
+    romance: `You are a warm, literary uncensored erotic partner for a person aged 18–20.
+Write sensually and young adult. All characters are 18+ adults. Never underage.
+When a photo is sent: describe respectfully and sensually, suggest romantic continuation.
+Answer in the user's language.`,
+    explicit: `You are a direct, uncensored and sexual adult chat partner for a person aged 18–20.
+Be graphic when requested. Everyone is consenting adult 18+.
+When a photo is sent: honest erotic analysis of body/pose/style, build further sexually if they want.
+Answer in the user's language.`,
+    dom: `You lead erotic power play (D/s) for an adult person aged 18–20.
+Consent, tension, commands, aftercare. Everyone 18+.
+When a photo is sent: assess pose/aura in a dominant/attentive tone.
+Answer in the user's language.`
+  };
+
+  const state = {
+    messages: [],
+    gallery: [],
+    abort: null,
+    lastImagePrompt: "",
+    busy: false,
+    pendingImages: [],
+    _savedModel: "",
+    _savedCkpt: "",
+    _savedVision: "",
+    lastUserMessage: "",
+    selectedImages: new Set(),
+    avatars: { user: null, ai: null },
+    userName: "",
+    assistantName: "",
+    timedOut: false,
+    chatLock: false,
+  };
+  const LS_KEY = "nsfw_studio_v6";
+  const DD_DEFAULTS = {
+    ddQuality: "masterpiece best quality highres detail",
+    ddSubject: "a young woman naked seductive confident",
+    ddPose: "spread legs lying on bed inviting",
+    ddClothing: "completely naked glistening skin",
+    ddSetting: "luxury bedroom soft lighting satin",
+    ddLighting: "cinematic lighting soft shadows",
+    ddCamera: "close-up POV intense view",
+    ddBodyType: "slim toned body",
+    ddHairColor: "brown hair",
+    ddHairStyle: "long flowing hair",
+    ddEyeColor: "brown eyes",
+    ddTattoo: "no tattoos, clean skin",
+    ddPiercing: "no piercings, natural body",
+    ddNudity: "fully nude",
+    ddExplicit: "sensual intimate mood",
+  };
+  const VISION_HINT = /llava|vision|vlm|qwen.*vl|minicpm|bakllava|moondream|gemma3|llama3\.2-vision|pixtral|internvl/i;
+
+  // ===== TEMA =====
+  const THEME_KEY = "nsfw_studio_theme";
+  let currentTheme = localStorage.getItem(THEME_KEY) || "dark";
+  function applyTheme(themeName) {
+    document.body.className = "theme-" + themeName;
+    currentTheme = themeName;
+    document.querySelectorAll(".theme-btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.theme === themeName);
+    });
+    localStorage.setItem(THEME_KEY, themeName);
+  }
+  function initTheme() {
+    applyTheme(currentTheme);
+    document.querySelectorAll(".theme-btn").forEach(btn => {
+      btn.addEventListener("click", () => applyTheme(btn.dataset.theme));
+    });
+  }
+
+  function normalizeBaseUrl(url) {
+    let u = (url || "").trim();
+    if (!u) return "";
+    u = u.replace(/\/+$/, "");
+    u = u.replace(/\/(api|prompt|ws)$/i, "");
+    if (!/^https?:\/\//i.test(u)) u = "http://" + u;
+    return u;
+  }
+
+  function sortAlpha(list) {
+    return [...list].sort((a, b) =>
+      String(a).localeCompare(String(b), "en", { sensitivity: "base", numeric: true })
+    );
+  }
+
+  function fillSelect(sel, items, saved, allowEmptyLabel) {
+    const cur = saved || sel.value;
+    sel.innerHTML = "";
+    if (allowEmptyLabel) {
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = allowEmptyLabel;
+      sel.appendChild(o);
+    }
+    if (!items.length && !allowEmptyLabel) {
+      sel.innerHTML = `<option value="">None found</option>`;
+      return;
+    }
+    for (const name of sortAlpha(items)) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    }
+    if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }
+
+  function saveLocal() {
+    const data = {
+      theme: currentTheme,
+      lang: currentLang,
+      ollamaUrl: $("ollamaUrl").value,
+      comfyUrl: $("comfyUrl").value,
+      systemPrompt: $("systemPrompt").value,
+      stylePos: $("stylePos").value,
+      styleNeg: $("styleNeg").value,
+      imgW: $("imgW").value, imgH: $("imgH").value,
+      steps: $("steps").value, cfg: $("cfg").value,
+      sampler: $("sampler").value, scheduler: $("scheduler").value,
+      numCtx: $("numCtx").value,
+      stream: $("streamToggle").checked,
+      autoImage: $("autoImage").checked,
+      translatePrompt: $("translatePrompt").checked,
+      showEnPrompt: $("showEnPrompt").checked,
+      // ===== ÄNDRAT: Spara inte tomma värden om selectsen inte hunnit laddas =====
+      model: $("modelSelect").value || state._savedModel,
+      vision: $("visionSelect").value || state._savedVision,
+      ckpt: $("ckptSelect").value || state._savedCkpt,
+      useTemplate: $("usePromptTemplate").checked,
+      ddQuality: $("ddQuality").value,
+      ddSubject: $("ddSubject").value,
+      ddPose: $("ddPose").value,
+      ddClothing: $("ddClothing").value,
+      ddSetting: $("ddSetting").value,
+      ddLighting: $("ddLighting").value,
+      ddCamera: $("ddCamera").value,
+      ddBodyType: $("ddBodyType").value,
+      ddHairColor: $("ddHairColor").value,
+      ddHairStyle: $("ddHairStyle").value,
+      ddEyeColor: $("ddEyeColor").value,
+      ddTattoo: $("ddTattoo").value,
+      ddPiercing: $("ddPiercing").value,
+      ddNudity: $("ddNudity").value,
+      ddExplicit: $("ddExplicit").value,
+      ddCustomTags: $("ddCustomTags").value,
+      userName: $("userNameInput").value,
+      assistantName: $("assistantNameInput").value,
+      numImages: $("numImages").value,
+      lastUserMessage: state.lastUserMessage,
+    };
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {
+      try { localStorage.clear(); localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
+    }
+    // ===== ÄNDRAT: Debounce för IndexedDB-sparning + skippa före boot =====
+    if (bootComplete) {
+      // localStorage-mirror direkt (tillförlitligt), IndexedDB debounce:ad som reserv.
+      saveChatLocal();
+      saveAvatarsLocal();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        saveMessagesToDB().catch(console.error);
+        saveAvatarsToDB().catch(console.error);
+      }, 400);
+    }
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.theme && ["dark","light","synthwave","dracula"].includes(d.theme)) {
+          currentTheme = d.theme;
+          applyTheme(d.theme);
+        }
+        // ===== ÄNDRAT: Sätt bara språket, låt initLang sköta UI-uppdatering =====
+        if (d.lang === "en" || d.lang === "sv") {
+          currentLang = d.lang;
+        }
+        for (const [k, id] of Object.entries({
+          ollamaUrl: "ollamaUrl", comfyUrl: "comfyUrl", systemPrompt: "systemPrompt",
+          stylePos: "stylePos", styleNeg: "styleNeg", imgW: "imgW", imgH: "imgH",
+          steps: "steps", cfg: "cfg", sampler: "sampler", scheduler: "scheduler", numCtx: "numCtx",
+        })) if (d[k] != null) $(id).value = d[k];
+        if (!$("numCtx").value) $("numCtx").value = 131072;
+        if (typeof d.stream === "boolean") $("streamToggle").checked = d.stream;
+        if (typeof d.autoImage === "boolean") $("autoImage").checked = d.autoImage;
+        if (typeof d.translatePrompt === "boolean") $("translatePrompt").checked = d.translatePrompt;
+        if (typeof d.showEnPrompt === "boolean") $("showEnPrompt").checked = d.showEnPrompt;
+        if (typeof d.useTemplate === "boolean") $("usePromptTemplate").checked = d.useTemplate;
+        if (d.numImages) $("numImages").value = d.numImages;
+        for (const k of Object.keys(DD_DEFAULTS)) {
+          $(k).value = d[k] || DD_DEFAULTS[k];
+        }
+        if (d.ddCustomTags != null) $("ddCustomTags").value = d.ddCustomTags;
+        if (d.userName != null) $("userNameInput").value = d.userName;
+        if (d.assistantName != null) $("assistantNameInput").value = d.assistantName;
+        state.userName = d.userName || "";
+        state.assistantName = d.assistantName || "";
+        if (d.lastUserMessage) state.lastUserMessage = d.lastUserMessage;
+        state._savedModel = d.model || "";
+        state._savedCkpt = d.ckpt || "";
+        state._savedVision = d.vision || "";
+      }
+    } catch {}
+  }
+
+  function toast(msg, ms = 2800) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toastEl.classList.remove("show"), ms);
+  }
+
+  // state.busy = "det körs något" (progress + stopp-knapp).
+  function setBusy(b) {
+    state.busy = b;
+    progressEl.style.display = b ? "block" : "none";
+    $("btnStop").disabled = !b;
+    if (!b) setChatLock(false);
+  }
+  // state.chatLock = bara en chatt åt gången; bildgenerering blockar INTE chatten.
+  function setChatLock(b) {
+    state.chatLock = b;
+    $("btnSend").disabled = b;
+    $("btnImage").disabled = b;
+    $("btnAttach").disabled = b;
+  }
+
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+
+  function setDiag(text, cls) {
+    comfyDiag.textContent = text;
+    comfyDiag.className = "diag" + (cls ? " " + cls : "");
+  }
+
+  function getCtx() {
+    const n = parseInt($("numCtx").value, 10);
+    return Number.isFinite(n) && n >= 2048 ? n : 131072;
+  }
+
+  async function fetchWithTimeout(url, ms = 6000, opt = {}) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+      return await fetch(url, { cache: "no-store", mode: "cors", ...opt, signal: opt.signal || ctrl.signal });
+    } finally { clearTimeout(t); }
+  }
+
+  // ---------- attachments / vision ----------
+  function renderAttachBar() {
+    attachBar.innerHTML = "";
+    for (const img of state.pendingImages) {
+      const d = document.createElement("div");
+      d.className = "thumb";
+      d.innerHTML = `<img src="${img.dataUrl}" alt=""><button title="Ta bort">×</button>`;
+      d.querySelector("button").onclick = () => {
+        state.pendingImages = state.pendingImages.filter(x => x.id !== img.id);
+        renderAttachBar();
+      };
+      attachBar.appendChild(d);
+    }
+  }
+
+  function attachAvatarForAnalysis(role) {
+    const dataUrl = role === "user" ? state.avatars.user : state.avatars.ai;
+    if (!dataUrl) return toast("Sätt en profilbild först");
+    state.pendingImages.push({
+      id: uid(),
+      dataUrl,
+      b64: dataUrlToB64(dataUrl),
+      mime: "image/jpeg",
+      name: "avatar.jpg"
+    });
+    renderAttachBar();
+    toast("Avatar bifogad för analys — tryck Skicka");
+  }
+
+  function dataUrlToB64(dataUrl) {
+    const i = dataUrl.indexOf(",");
+    return i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function compressImage(dataUrl, maxSide = 1280, quality = 0.88) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        const scale = Math.min(1, maxSide / Math.max(width, height));
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+        const c = document.createElement("canvas");
+        c.width = width; c.height = height;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const out = c.toDataURL("image/jpeg", quality);
+        resolve(out);
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
+  async function addFiles(fileList) {
+    const files = [...fileList].filter(f => f.type.startsWith("image/"));
+    if (!files.length) return toast("Inga bilder i urvalet");
+    for (const f of files) {
+      let dataUrl = await readFileAsDataUrl(f);
+      dataUrl = await compressImage(dataUrl);
+      state.pendingImages.push({
+        id: uid(),
+        dataUrl,
+        b64: dataUrlToB64(dataUrl),
+        mime: "image/jpeg",
+        name: f.name || "image.jpg",
+      });
+    }
+    renderAttachBar();
+    toast(`${files.length} bild(er) bifogad(e)`);
+  }
+
+  document.addEventListener("paste", async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files = [];
+    for (const it of items) {
+      if (it.type.startsWith("image/")) {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length) {
+      e.preventDefault();
+      await addFiles(files);
+    }
+  });
+
+  let dragDepth = 0;
+  // ===== ÄNDRAT: Array.from för säkrare dragenter =====
+  window.addEventListener("dragenter", (e) => {
+    if (!Array.from(e.dataTransfer.types || []).includes("Files")) return;
+    dragDepth++;
+    dropOverlay.classList.add("show");
+  });
+  window.addEventListener("dragleave", () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) dropOverlay.classList.remove("show");
+  });
+  window.addEventListener("dragover", (e) => { e.preventDefault(); });
+  window.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    dragDepth = 0;
+    dropOverlay.classList.remove("show");
+    if (e.dataTransfer?.files?.length) await addFiles(e.dataTransfer.files);
+  });
+
+  // ---------- connections ----------
+  async function probeComfy(base) {
+    const endpoints = ["/system_stats", "/object_info/CheckpointLoaderSimple", "/models/checkpoints", "/queue"];
+    const result = { ok: false, ckpts: [], tried: [] };
+    for (const path of endpoints) {
+      try {
+        const r = await fetchWithTimeout(base + path, 5000);
+        result.tried.push(`${path} → ${r.status}`);
+        if (!r.ok) continue;
+        result.ok = true;
+        if (path === "/models/checkpoints") {
+          const list = await r.json();
+          if (Array.isArray(list)) result.ckpts = list;
+        }
+        if (path === "/object_info/CheckpointLoaderSimple") {
+          const data = await r.json();
+          const arr = data?.CheckpointLoaderSimple?.input?.required?.ckpt_name?.[0];
+          if (Array.isArray(arr)) result.ckpts = arr;
+        }
+      } catch (e) {
+        result.tried.push(`${path} → ${e.message}`);
+      }
+    }
+    if (result.ckpts.length) result.ok = true;
+    return result;
+  }
+
+  async function testComfyUI(showToast = true) {
+    const base = normalizeBaseUrl($("comfyUrl").value);
+    $("comfyUrl").value = base;
+    setDiag("Testing " + base + " …");
+    $("comfyDot").className = "dot warn";
+    const probe = await probeComfy(base);
+    if (probe.ok) {
+      fillSelect($("ckptSelect"), probe.ckpts, state._savedCkpt || $("ckptSelect").value);
+      $("comfyDot").className = "dot ok";
+      $("comfyStatus").textContent = probe.ckpts.length ? `${probe.ckpts.length} ckpt` : "online";
+      setDiag(`OK ${base}\n` + probe.tried.join("\n") + `\ncheckpoints: ${probe.ckpts.length}`, "ok");
+      if (showToast) toast("ComfyUI: connected");
+    } else {
+      $("comfyDot").className = "dot bad";
+      $("comfyStatus").textContent = "offline";
+      setDiag(`MISS ${base}\n` + probe.tried.join("\n") + `\n\nStart with --enable-cors-header\nOpen client via http://127.0.0.1:5500`, "bad");
+      if (showToast) toast("ComfyUI offline", 3500);
+    }
+    saveLocal();
+    return probe.ok;
+  }
+
+  async function testOllama(showToast = true) {
+    const base = normalizeBaseUrl($("ollamaUrl").value);
+    $("ollamaUrl").value = base;
+    try {
+      const r = await fetchWithTimeout(base + "/api/tags", 5000);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const data = await r.json();
+      const models = (data.models || []).map(m => m.name);
+      fillSelect($("modelSelect"), models, state._savedModel || $("modelSelect").value);
+      const visionSorted = sortAlpha(models).sort((a, b) => {
+        const av = VISION_HINT.test(a) ? 0 : 1;
+        const bv = VISION_HINT.test(b) ? 0 : 1;
+        return av - bv || a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
+      });
+      fillSelect($("visionSelect"), visionSorted, state._savedVision || $("visionSelect").value, "Samme som chat / auto");
+      $("ollamaDot").className = "dot ok";
+      $("ollamaStatus").textContent = `${models.length} models`;
+      if (showToast) toast("Ollama: connected");
+      saveLocal();
+      return true;
+    } catch (e) {
+      $("ollamaDot").className = "dot bad";
+      $("ollamaStatus").textContent = "offline";
+      if (showToast) toast("Ollama offline: " + e.message);
+      return false;
+    }
+  }
+
+  async function refreshConnections() {
+    await Promise.all([testOllama(false), testComfyUI(false)]);
+  }
+
+  // ---------- chat UI ----------
+  function addMessage(role, content, extra = {}) {
+    const msg = { id: uid(), role, content, ...extra, ts: Date.now() };
+    state.messages.push(msg);
+    appendMessageEl(msg);
+    saveLocal();
+    return msg;
+  }
+
+  // ===== NYTT: Ladda ner data-URL som fil =====
+  function downloadDataUrl(dataUrl, filename) {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // ===== NYTT: Gemensam bildgrid-renderare =====
+  function renderImageGridInto(el, msg) {
+    // Migrera gammal data
+    if (!msg.images && msg.image) {
+      msg.images = [{ url: msg.image }];
+      msg.image = null;
+    }
+
+    const oldGrid = el.querySelector(".image-grid");
+    if (oldGrid) oldGrid.remove();
+    const oldBtn = el.querySelector(".delete-selected-btn");
+    if (oldBtn) oldBtn.remove();
+
+    const imagesArray = msg.images && msg.images.length ? msg.images : (msg.image ? [{ url: msg.image }] : []);
+    if (!imagesArray.length) {
+      updateDeleteButton(msg.id);
+      return;
+    }
+
+    if (msg.role === "assistant") {
+      const careBtn = document.createElement("button");
+      careBtn.className = "delete-selected-btn btn small danger";
+      careBtn.textContent = "Delete selected";
+      careBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteSelectedImages(msg.id);
+      };
+      el.appendChild(careBtn);
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "image-grid";
+
+    for (let i = 0; i < imagesArray.length; i++) {
+      const imgData = imagesArray[i];
+      const imageId = `${msg.id}_img_${i}`;
+
+      const fig = document.createElement("figure");
+      fig.dataset.imageId = imageId;
+      fig.style.position = "relative";
+
+      const imgEl = document.createElement("img");
+      imgEl.src = imgData.url;
+      imgEl.alt = imgData.seed ? `Seed ${imgData.seed}` : "";
+      imgEl.loading = "lazy";
+      imgEl.addEventListener("click", (e) => {
+        if (state.selectedImages.has(imageId)) {
+          toggleImageSelection(imageId, false, msg.id);
+        } else {
+          openLightbox(imgData.url);
+        }
+      });
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "image-checkbox";
+      cb.dataset.imageId = imageId;
+      cb.addEventListener("change", function(e) {
+        e.stopPropagation();
+        toggleImageSelection(imageId, this.checked, msg.id);
+      });
+
+      const delSingleBtn = document.createElement("button");
+      delSingleBtn.className = "delete-single-btn";
+      delSingleBtn.textContent = "×";
+      delSingleBtn.title = "Delete this image";
+      delSingleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteSingleImage(msg.id, i);
+      });
+
+      const dlBtn = document.createElement("button");
+      dlBtn.className = "download-single-btn";
+      dlBtn.textContent = "⬇";
+      dlBtn.title = "Download image";
+      dlBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        downloadDataUrl(imgData.url, `nsfw-${Date.now()}-${i}.jpg`);
+      });
+
+      const cap = document.createElement("figcaption");
+      cap.textContent = imgData.seed !== undefined && imgData.seed !== null ? `Seed: ${imgData.seed}` : "";
+
+      fig.appendChild(imgEl);
+      fig.appendChild(cb);
+      fig.appendChild(delSingleBtn);
+      fig.appendChild(dlBtn);
+      fig.appendChild(cap);
+      grid.appendChild(fig);
+    }
+
+    el.appendChild(grid);
+    updateDeleteButton(msg.id);
+  }
+
+  // Meddelande-knappar + radering etc
+  function appendMessageEl(msg) {
+    const el = document.createElement("div");
+    el.className = `msg ${msg.role === "user" ? "user" : "bot"}`;
+    el.dataset.id = msg.id;
+
+    // Meddelande-actions
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "msg-actions";
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "msg-action-btn delete-btn";
+    delBtn.innerHTML = "🗑️";
+    delBtn.title = "Delete message";
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm("Delete this message?")) {
+        deleteMessage(msg.id);
+      }
+    };
+    actionsDiv.appendChild(delBtn);
+
+    if (msg.role === "user") {
+      const regenBtn = document.createElement("button");
+      regenBtn.className = "msg-action-btn";
+      regenBtn.innerHTML = "↻";
+      regenBtn.title = "Resend this message";
+      regenBtn.onclick = (e) => {
+        e.stopPropagation();
+        regenerateMessage(msg.id);
+      };
+      actionsDiv.appendChild(regenBtn);
+    }
+
+    el.appendChild(actionsDiv);
+
+    // Avatar + meta
+    const avatarData = msg.role === "user" ? state.avatars.user : state.avatars.ai;
+    if (avatarData) {
+      const headerDiv = document.createElement("div");
+      headerDiv.className = "msg-header";
+      const avImg = document.createElement("img");
+      avImg.src = avatarData;
+      avImg.className = "avatar";
+      avImg.style.cursor = "pointer";
+      avImg.title = "Bifoga avatar för analys";
+      avImg.addEventListener("click", () => attachAvatarForAnalysis(msg.role));
+      headerDiv.appendChild(avImg);
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const who = msg.role === "user"
+        ? (state.userName || langStrings[currentLang].you)
+        : (state.assistantName || langStrings[currentLang].assistant);
+      meta.innerHTML = `<span>${who}</span><span>${new Date(msg.ts || Date.now()).toLocaleTimeString()}</span>`;
+      headerDiv.appendChild(meta);
+      el.appendChild(headerDiv);
+      const body = document.createElement("div");
+      body.className = "msg-body";
+      body.textContent = msg.content || "";
+      el.appendChild(body);
+    } else {
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const who = msg.role === "user"
+        ? (state.userName || langStrings[currentLang].you)
+        : (state.assistantName || langStrings[currentLang].assistant);
+      meta.innerHTML = `<span>${who}</span><span>${new Date(msg.ts || Date.now()).toLocaleTimeString()}</span>`;
+      el.appendChild(meta);
+      const body = document.createElement("div");
+      body.className = "msg-body";
+      body.textContent = msg.content || "";
+      el.appendChild(body);
+    }
+
+    // bifogad bild
+    if (msg.attachDataUrl) {
+      const img = document.createElement("img");
+      img.className = "attach";
+      img.src = msg.attachDataUrl;
+      img.loading = "lazy";
+      img.addEventListener("click", () => openLightbox(msg.attachDataUrl));
+      el.appendChild(img);
+    }
+    if (msg.enPrompt && $("showEnPrompt").checked) {
+      const box = document.createElement("div");
+      box.className = "en-prompt";
+      box.textContent = "EN prompt: " + msg.enPrompt;
+      el.appendChild(box);
+    }
+
+    // ===== ÄNDRAT: Använd gemensam renderare för bilder =====
+    if (msg.images && msg.images.length || msg.image) {
+      renderImageGridInto(el, msg);
+    }
+
+    // actions
+    if (msg.role === "assistant") {
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      const b1 = document.createElement("button");
+      b1.className = "btn small";
+      b1.textContent = "Generate image from answer";
+      b1.onclick = () => generateImage(msg.content.slice(0, 900));
+      const b2 = document.createElement("button");
+      b2.className = "btn small";
+      b2.textContent = "Copy";
+      b2.onclick = async () => { await navigator.clipboard.writeText(msg.content || ""); toast("Copied"); };
+      actions.append(b1, b2);
+      el.appendChild(actions);
+    }
+    chatEl.appendChild(el);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    updateDeleteButton(msg.id);
+  }
+
+  // Radera meddelande
+  function deleteMessage(msgId) {
+    state.messages = state.messages.filter(m => m.id !== msgId);
+    toast("Message deleted");
+    saveLocal();
+    renderAllMessages();
+  }
+
+  // ===== ÄNDRAT: Regenerera med stöd för bifogad bild =====
+  function regenerateMessage(msgId) {
+    const msg = state.messages.find(m => m.id === msgId);
+    if (!msg || msg.role !== "user") return;
+    if (msg.attachDataUrl) {
+      state.pendingImages.push({
+        id: uid(),
+        dataUrl: msg.attachDataUrl,
+        b64: dataUrlToB64(msg.attachDataUrl),
+        mime: "image/jpeg",
+        name: "attached.jpg"
+      });
+      renderAttachBar();
+      triggerSend(msg.content || "");
+    } else {
+      triggerSend(msg.content);
+    }
+  }
+
+  // triggerSend – fixad async
+  async function triggerSend(textOverride = null) {
+    const text = textOverride !== null ? textOverride : $("prompt").value.trim();
+    const pending = [...state.pendingImages];
+    if ((!text && !pending.length) || state.chatLock) return;
+
+    if (textOverride === null) {
+      $("prompt").value = "";
+      autoGrow();
+    }
+
+    if (text) state.lastUserMessage = text;
+
+    if (text === "/clear") {
+      state.messages = []; state.pendingImages = []; renderAttachBar();
+      saveLocal(); renderAllMessages(); toast("Chat cleared"); return;
+    }
+    if (text.startsWith("/system ")) {
+      $("systemPrompt").value = text.slice(8); saveLocal();
+      addMessage("assistant", "System prompt updated."); return;
+    }
+
+    if (text.startsWith("/image ") || text.startsWith("/img ")) {
+      let p = text.replace(/^\/img(?:age)?\s+/, "");
+      const skipTranslation = p.startsWith("raw ");
+      if (skipTranslation) p = p.slice(4).trim();
+      else if (p.startsWith("tr ")) {
+        p = p.slice(3).trim();
+      }
+      state.pendingImages = []; renderAttachBar();
+      await generateImage(p.slice(0, 350), skipTranslation);
+      return;
+    }
+    if (text.startsWith("/image") || text.startsWith("/img")) {
+      if (state.lastImagePrompt) {
+        state.pendingImages = []; renderAttachBar();
+        await generateImage(state.lastImagePrompt);
+        return;
+      }
+      toast("Add a prompt after /image, e.g. /image raw a beautiful girl");
+      return;
+    }
+
+    if (pending.length) {
+      const b64s = pending.map(p => p.b64);
+      const preview = pending[0].dataUrl;
+      state.pendingImages = [];
+      renderAttachBar();
+      await chat(text, b64s, preview);
+      return;
+    }
+    await chat(text);
+  }
+
+  // toggle bilder
+  function toggleImageSelection(imageId, checked, msgId) {
+    if (checked) state.selectedImages.add(imageId);
+    else state.selectedImages.delete(imageId);
+    const cb = document.querySelector(`[data-image-id="${imageId}"]`);
+    if (cb) cb.checked = state.selectedImages.has(imageId);
+    updateDeleteButton(msgId);
+  }
+
+  function updateDeleteButton(msgId) {
+    const el = chatEl.querySelector(`[data-id="${msgId}"]`);
+    if (!el) return;
+    const deleteBtn = el.querySelector(".delete-selected-btn");
+    if (!deleteBtn) return;
+    if (state.selectedImages.size > 0) {
+      deleteBtn.style.display = "block";
+      deleteBtn.disabled = false;
+    } else {
+      deleteBtn.style.display = "none";
+    }
+  }
+
+  // ===== ÄNDRAT: Använder renderImageGridInto för korrekt DOM-uppdatering =====
+  function deleteSelectedImages(msgId) {
+    if (state.selectedImages.size === 0) return;
+    if (!confirm(`Delete ${state.selectedImages.size} selected image(s)?`)) return;
+
+    const msg = state.messages.find(m => m.id === msgId);
+    if (!msg) return;
+
+    // Migrera gammal data
+    if (!msg.images && msg.image) {
+      msg.images = [{ url: msg.image }];
+      msg.image = null;
+    }
+    if (!msg.images) return;
+
+    const selected = new Set(state.selectedImages);
+    msg.images = msg.images.filter((img, i) => {
+      const imageId = `${msgId}_img_${i}`;
+      return !selected.has(imageId);
+    });
+    if (msg.images.length === 0) {
+      msg.image = null;
+      msg.images = [];
+    }
+    state.selectedImages.clear();
+
+    const el = chatEl.querySelector(`[data-id="${msgId}"]`);
+    if (el) renderImageGridInto(el, msg);
+    saveLocal();
+  }
+
+  // ===== ÄNDRAT: Använder renderImageGridInto för korrekt DOM-uppdatering =====
+  function deleteSingleImage(msgId, imageIndex) {
+    const msg = state.messages.find(m => m.id === msgId);
+    if (!msg) return;
+
+    // Migrera gammal data
+    if (!msg.images && msg.image) {
+      msg.images = [{ url: msg.image }];
+      msg.image = null;
+    }
+    if (!msg.images) return;
+
+    const imageId = `${msgId}_img_${imageIndex}`;
+    msg.images.splice(imageIndex, 1);
+    if (msg.images.length === 0) {
+      msg.image = null;
+      msg.images = [];
+    }
+    state.selectedImages.delete(imageId);
+
+    const el = chatEl.querySelector(`[data-id="${msgId}"]`);
+    if (el) renderImageGridInto(el, msg);
+    saveLocal();
+  }
+
+  function renderAllMessages() {
+    chatEl.innerHTML = "";
+    state.selectedImages.clear();
+    if (!state.messages.length) {
+      const lang = currentLang === "sv" ? "sv" : "en";
+      const welcomeMsg = lang === "sv"
+        ? "Hej. 18-20 lokal studio.\n\n• Chat med ctx 131072\n• /image något → DIREKT till ComfyUI (obs: engelsk prompt)\n• /image tr något → översätt först, sen ComfyUI\n• Upp till 4 bilder per /image\n• Foto-knappen / klistra in / dra-släpp → analyserar din bild med vision-modell\n• Tryck på × för att ta bort en bild, använd kryssrutor för massradering\n• 🗑️ radera meddelande, ↻ skicka om användarmeddelanden\n• Sätt profilbilder för dig och AI:n i sidopanelen\n\nTips: pull en vision-modell, t.ex.\n  ollama pull llava\n  ollama pull llama3.2-vision\n  ollama pull qwen2.5vl"
+        : "Hi. 18-20 local studio.\n\n• Chat with ctx 131072\n• /image something → DIRECT to ComfyUI (note: english prompt)\n• /image tr something → translate first, then ComfyUI\n• Up to 4 images per /image\n• Photo button / paste / drag-and-drop → analyze with vision model\n• Press × to remove an image, use checkboxes for bulk deletion\n• 🗑️ delete message, ↻ resend user message\n• Set profile pictures for you and AI in sidebar\n\nTip: pull a vision model, e.g.\n  ollama pull llava\n  ollama pull llama3.2-vision\n  ollama pull qwen2.5vl";
+      state.messages = [{
+        id: uid(), role: "assistant", ts: Date.now(),
+        content: welcomeMsg
+      }];
+    }
+    state.messages.forEach(appendMessageEl);
+  }
+
+  function updateMessageEl(id, content, extras = {}) {
+    const el = chatEl.querySelector(`[data-id="${id}"]`);
+    const msg = state.messages.find(m => m.id === id);
+    if (msg) {
+      if (content != null) msg.content = content;
+      Object.assign(msg, extras);
+    }
+    if (!el) return;
+    if (content != null) {
+      const body = el.querySelector(".msg-body");
+      if (body) body.textContent = content;
+    }
+    if (extras.enPrompt && $("showEnPrompt").checked) {
+      let box = el.querySelector(".en-prompt");
+      if (!box) {
+        box = document.createElement("div");
+        box.className = "en-prompt";
+        el.appendChild(box);
+      }
+      box.textContent = "EN prompt: " + extras.enPrompt;
+    }
+    // ===== NYTT: Rendera bilder direkt när de läggs till =====
+    if (extras.images && msg) {
+      renderImageGridInto(el, msg);
+    }
+  }
+
+  function openLightbox(src) {
+    $("lightboxImg").src = src;
+    $("lightbox").classList.add("open");
+  }
+  $("lightbox").onclick = () => $("lightbox").classList.remove("open");
+
+  // ===== GALLERI =====
+  async function addToGallery(url, prompt) {
+    state.gallery.unshift({ url, prompt, ts: Date.now() });
+    if (state.gallery.length > 50) state.gallery.length = 50;
+    renderGallery();
+    await saveGalleryToDB(state.gallery);
+  }
+
+  function renderGallery() {
+    galleryEl.innerHTML = "";
+    galleryEmpty.style.display = state.gallery.length ? "none" : "block";
+    for (const g of state.gallery.slice(0, 40)) {
+      const fig = document.createElement("figure");
+      const img = document.createElement("img");
+      img.src = g.url;
+      img.loading = "lazy";
+      const cap = document.createElement("figcaption");
+      cap.textContent = g.prompt;
+      fig.append(img, cap);
+      fig.onclick = () => openLightbox(g.url);
+      galleryEl.appendChild(fig);
+    }
+  }
+
+  async function reloadGalleryFromDB() {
+    const items = await loadGalleryFromDB();
+    if (items.length) {
+      state.gallery = items;
+      renderGallery();
+    }
+  }
+
+  function pickVisionModel() {
+    const v = $("visionSelect").value;
+    if (v) return v;
+    const chatModel = $("modelSelect").value;
+    const opts = [...$("visionSelect").options].map(o => o.value).filter(Boolean);
+    const hit = opts.find(n => VISION_HINT.test(n));
+    return hit || chatModel;
+  }
+
+  function buildPromptFromTemplate(userText) {
+    if (!$("usePromptTemplate").checked) {
+      return (userText || "").trim().slice(0, 350);
+    }
+    const parts = [
+      $("ddQuality").value,
+      $("ddSubject").value,
+      $("ddBodyType").value,
+      $("ddPose").value,
+      $("ddClothing").value,
+      $("ddNudity").value,
+      $("ddSetting").value,
+      $("ddLighting").value,
+      $("ddCamera").value,
+      $("ddHairColor").value,
+      $("ddHairStyle").value,
+      $("ddEyeColor").value,
+      $("ddTattoo").value,
+      $("ddPiercing").value,
+      $("ddExplicit").value,
+      ($("ddCustomTags").value || "").trim(),
+    ];
+    if (userText && userText.trim()) {
+      parts.push(userText.trim());
+    }
+    // Kategorier som satts till "— Tom —" (tom sträng) bidrar inget.
+    return parts.filter(p => p && p.trim()).join(", ").slice(0, 350);
+  }
+
+  // ---------- Ollama helpers ----------
+  async function ollamaChat({ model, messages, stream = false, images }) {
+    const ollamaUrl = normalizeBaseUrl($("ollamaUrl").value);
+    const payload = {
+      model,
+      messages,
+      stream,
+      options: {
+        temperature: 1.0,
+        top_p: 0.95,
+        top_k: 20,
+        min_p: 0.0,
+        presence_penalty: 1.5,
+        repetition_penalty: 1.0,
+        num_ctx: getCtx(),
+      }
+    };
+    // 5 minuters hård gräns — lokala modeller kan vara långsamma.
+    state.timedOut = false;
+    const timeoutId = setTimeout(() => {
+      state.timedOut = true;
+      state.abort?.abort();
+    }, 300000);
+    let res;
+    try {
+      res = await fetch(`${ollamaUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: state.abort?.signal,
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      throw e;
+    }
+    if (!res.ok) { clearTimeout(timeoutId); throw new Error(`Ollama ${res.status}: ${await res.text()}`); }
+    if (!stream) {
+      clearTimeout(timeoutId);
+      const j = await res.json();
+      return j?.message?.content || "";
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let full = "", buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const j = JSON.parse(line);
+          const piece = j?.message?.content || "";
+          if (piece) {
+            full += piece;
+            if (images?.onToken) images.onToken(full);
+          }
+        } catch {}
+      }
+    }
+    clearTimeout(timeoutId);
+    return full;
+  }
+
+  function looksLikeEnglish(text) {
+    const t = text.trim();
+    const swe = (t.match(/[åäöÅÄÖ]/g) || []).length;
+    const letters = (t.match(/[A-Za-zÅÄÖåäö]/g) || []).length;
+    if (!letters) return false;
+    if (swe / letters > 0.02) return false;
+    if (/\b(och|jag|det|att|en|ett|med|på|för|som|är|den|var|till|de)\b/i.test(t) && swe > 0) return false;
+    return true;
+  }
+
+  async function translateToEnglishSDPrompt(rawText) {
+    if (!$("translatePrompt").checked) return rawText.trim().slice(0, 350);
+    const text = rawText.trim().slice(0, 350);
+    if (!text) return text;
+    if (looksLikeEnglish(text)) return text;
+    const model = $("modelSelect").value;
+    if (!model) return text;
+    const sys = `Convert the user's image request into ONE single English Stable Diffusion / ComfyUI prompt.
+Rules:
+- Output ONLY the English prompt, no quotes, no explanation, no markdown.
+- Keep it visual and concrete: subject, age (adult 18-20), appearance, clothing, pose, setting, lighting, camera, style.
+- All subjects are clearly adult 18+. Prefer young adult look.
+- NSFW allowed when asked. Use explicit, visual tags.
+- Max ~120 words. Comma-separated tags/phrases ok.`;
+    try {
+      const out = await ollamaChat({
+        model,
+        stream: false,
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: text }
+        ]
+      });
+      const result = (out || text).replace(/^["'\s]+|["'\s]+$/g, "").trim().slice(0, 350);
+      return result || text;
+    } catch (e) {
+      console.warn("translate failed", e);
+      return text;
+    }
+  }
+
+  async function chat(userText, imagesB64 = [], attachDataUrl = null) {
+    const model = imagesB64.length ? pickVisionModel() : $("modelSelect").value;
+    if (!model) { toast("Select Ollama model"); return; }
+
+    const display = userText || (imagesB64.length ? "(image attached — analyze)" : "");
+    addMessage("user", display, attachDataUrl ? { attachDataUrl } : {});
+    const bot = addMessage("assistant", "");
+    setBusy(true);
+    setChatLock(true);
+    state.abort = new AbortController();
+
+    const history = [];
+    const sys = $("systemPrompt").value.trim();
+    const noThinkInstruction = "IMPORTANT: Do not think step by step. Respond directly without reasoning.";
+    const combinedSys = noThinkInstruction + "\n\n" + sys;
+    if (combinedSys.trim()) history.push({ role: "system", content: combinedSys });
+
+    for (const m of state.messages) {
+      if (m.id === bot.id) continue;
+      if (m.role === "user" || m.role === "assistant") {
+        if (!m.content && !m.attachDataUrl) continue;
+        if (m.role === "user" && m.attachDataUrl && m.id !== state.messages[state.messages.length - 2]?.id) {
+          history.push({ role: "user", content: (m.content || "") + "\n[user attached an image earlier]" });
+        } else if (m.content) {
+          history.push({ role: m.role, content: m.content });
+        }
+      }
+    }
+
+    while (history.length && history[history.length - 1].role === "user") history.pop();
+    const userMsg = {
+      role: "user",
+      content: userText || "Analyze the image I sent. I am a young adult aged 18-20. Describe what you see and build further in our tone.",
+    };
+    if (imagesB64.length) userMsg.images = imagesB64;
+    history.push(userMsg);
+
+    // ===== NYTT: Begränsa historiken för att spara tokens och öka hastighet =====
+    const MAX_HISTORY_ITEMS = 20;
+    const trimmedHistory = history.length > MAX_HISTORY_ITEMS + 1
+      ? [...history.filter(m => m.role === "system"), ...history.filter(m => m.role !== "system").slice(-MAX_HISTORY_ITEMS)]
+      : history;
+
+    try {
+      const full = await ollamaChat({
+        model,
+        messages: trimmedHistory,
+        stream: $("streamToggle").checked,
+        images: {
+          onToken: (t) => updateMessageEl(bot.id, t)
+        }
+      });
+      updateMessageEl(bot.id, full || "(empty response)");
+      saveLocal();
+    } catch (e) {
+      const suffix = state.timedOut ? "[timeout after 5 minutes]" : "[aborted]";
+      state.timedOut = false;
+      const msg = e.name === "AbortError" ? ((bot.content || "") + "\n\n" + suffix) : `Error: ${e.message}`;
+      updateMessageEl(bot.id, msg);
+      if (e.name !== "AbortError") {
+        if (/image|vision|does not support/i.test(e.message)) {
+          toast("Model does not support images — select vision model");
+        } else toast(e.message);
+      }
+    } finally {
+      setBusy(false);
+      state.abort = null;
+    }
+  }
+
+  function buildWorkflow(positive, negative, seed) {
+    return {
+      "3": {
+        class_type: "KSampler",
+        inputs: {
+          seed, steps: +$("steps").value || 28, cfg: +$("cfg").value || 5.5,
+          sampler_name: $("sampler").value, scheduler: $("scheduler").value, denoise: 1,
+          model: ["4", 0], positive: ["6", 0], negative: ["7", 0], latent_image: ["5", 0]
+        }
+      },
+      "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: $("ckptSelect").value } },
+      "5": { class_type: "EmptyLatentImage", inputs: { width: +$("imgW").value || 768, height: +$("imgH").value || 1024, batch_size: 1 } },
+      "6": { class_type: "CLIPTextEncode", inputs: { text: positive, clip: ["4", 1] } },
+      "7": { class_type: "CLIPTextEncode", inputs: { text: negative, clip: ["4", 1] } },
+      "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] } },
+      "9": { class_type: "SaveImage", inputs: { filename_prefix: "NSFW_Studio", images: ["8", 0] } }
+    };
+  }
+
+  async function generateImage(promptText, skipTranslation = false) {
+    const comfyUrl = normalizeBaseUrl($("comfyUrl").value);
+    const ckpt = $("ckptSelect").value;
+    if (!ckpt) { toast("No checkpoint — test ComfyUI"); return; }
+    if (!promptText?.trim()) { toast("Empty image prompt"); return; }
+
+    setBusy(true);
+    state.abort = new AbortController();
+
+    const finalPrompt = buildPromptFromTemplate(promptText).slice(0, 350);
+    const num = Math.min(Math.max(parseInt($("numImages").value) || 1, 1), 4);
+
+    const note = addMessage("assistant", `Preparing ${num} image(s)…\nOriginal: ${finalPrompt}`);
+    let en = finalPrompt.trim();
+
+    try {
+      if ($("translatePrompt").checked && !skipTranslation) {
+        updateMessageEl(note.id, `Translating to English SD prompt…\nOriginal: ${finalPrompt}`);
+        en = await translateToEnglishSDPrompt(finalPrompt);
+        en = en.slice(0, 350);
+      } else if (skipTranslation) {
+        updateMessageEl(note.id, `Sending directly to ComfyUI (no translation)…\nPrompt: ${finalPrompt}`);
+      } else {
+        en = finalPrompt;
+      }
+
+      state.lastImagePrompt = promptText.trim();
+      const stylePos = $("stylePos").value.trim();
+      const positive = stylePos ? `${en}, ${stylePos}` : en;
+      const negative = $("styleNeg").value.trim();
+
+      // ===== ÄNDRAT: Fixa seed när parseInt ger NaN =====
+      const baseSeed = parseInt($("seed").value);
+      const seeds = [];
+      for (let i = 0; i < num; i++) {
+        if (!Number.isFinite(baseSeed) || baseSeed < 0) seeds.push(Math.floor(Math.random() * 1e15));
+        else seeds.push(baseSeed + i);
+      }
+
+      const msg = state.messages.find(m => m.id === note.id);
+      if (!msg) return;
+      msg.enPrompt = en;
+      msg.imagePrompt = finalPrompt;
+      msg.images = [];
+
+      updateMessageEl(note.id, `Sending ${num} prompt(s) to ComfyUI…`, { enPrompt: en, images: [] });
+
+      // Skicka in alla bilder i ComfyUI-kön direkt och polla sedan parallellt —
+      // annars tar N bilder N gånger så lång tid och ser ut som att det hängt.
+      await Promise.allSettled(seeds.map(async (seed, idx) => {
+        try {
+          const result = await generateSingleImage(comfyUrl, { seed, positive, negative, workflow: buildWorkflow(positive, negative, seed) }, state.abort.signal);
+          msg.images.push({ url: result.url, seed: result.seed });
+          saveMessagesToDB().catch(console.error);
+          updateMessageEl(note.id, `${msg.images.length} of ${num} image(s) done…`, { images: msg.images.slice() });
+          await addToGallery(result.url, `${en} (seed ${result.seed})`);
+        } catch (e) {
+          if (e.name === "AbortError") throw e;
+          toast(`Image ${idx+1} failed: ${e.message}`, 4000);
+        }
+      }));
+      if (state.abort?.signal.aborted) throw new DOMException("Aborted", "AbortError");
+
+      const finalText = msg.images.length
+        ? `${msg.images.length} image(s) done.\nOriginal: ${finalPrompt}`
+        : `No images could be generated.\nOriginal: ${finalPrompt}`;
+      updateMessageEl(note.id, finalText, { images: msg.images.slice() });
+      saveLocal();
+    } catch (e) {
+      if (e.name === "AbortError") {
+        updateMessageEl(note.id, (note.content || "") + (state.timedOut ? "\n[timeout after 5 minutes]" : "\n[aborted]"));
+        state.timedOut = false;
+      }
+      else {
+        updateMessageEl(note.id, `Image error: ${e.message}`, { enPrompt: en });
+        toast(e.message, 4000);
+      }
+    } finally {
+      setBusy(false);
+      state.abort = null;
+    }
+  }
+
+  // ===== ÄNDRAT: Komprimerar bilden + fallback för crypto.randomUUID =====
+  async function generateSingleImage(comfyUrl, promptData, signal) {
+    const { seed, positive, negative, workflow } = promptData;
+    const clientId = crypto.randomUUID
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+    const res = await fetch(`${comfyUrl}/prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: workflow, client_id: clientId }),
+      signal,
+    });
+    if (!res.ok) throw new Error(`ComfyUI /prompt ${res.status}: ${await res.text()}`);
+    const pj = await res.json();
+    const promptId = pj.prompt_id;
+    if (!promptId) throw new Error("No prompt_id");
+
+    const start = Date.now();
+    let imageInfo = null;
+    while (Date.now() - start < 300000) {
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      await new Promise(r => setTimeout(r, 900));
+      const hr = await fetch(`${comfyUrl}/history/${promptId}`, { signal });
+      if (!hr.ok) continue;
+      const hist = await hr.json();
+      const item = hist[promptId];
+      if (!item) continue;
+      for (const nodeId of Object.keys(item.outputs || {})) {
+        const imgs = item.outputs[nodeId].images;
+        if (imgs?.length) { imageInfo = imgs[0]; break; }
+      }
+      if (imageInfo) break;
+      if (item.status?.status_str === "error") throw new Error("ComfyUI workflow error");
+    }
+    if (!imageInfo) throw new Error("Timeout — no image");
+
+    const viewUrl = `${comfyUrl}/view?filename=${encodeURIComponent(imageInfo.filename)}&subfolder=${encodeURIComponent(imageInfo.subfolder || "")}&type=${encodeURIComponent(imageInfo.type || "output")}`;
+    const ir = await fetch(viewUrl);
+    if (!ir.ok) throw new Error("Could not fetch image file");
+    const blob = await ir.blob();
+    const url = await blobToDataUrl(blob);
+    // Komprimera för snabbare galleri/chat
+    const compressedUrl = await compressImage(url, 1280, 0.88);
+    return { url: compressedUrl, seed, filename: imageInfo.filename };
+  }
+
+  // handleSend anropar triggerSend
+  async function handleSend() {
+    await triggerSend();
+  }
+
+  function autoGrow() {
+    const el = $("prompt");
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 180) + "px";
+  }
+
+  function applyPreset(key) {
+    $("systemPrompt").value = (key === "default") ? langStrings[currentLang].systemPrompt : (PRESETS[key] || langStrings[currentLang].systemPrompt);
+    saveLocal();
+    toast("Preset: " + key);
+  }
+
+  async function regenerateLastUserMessage() {
+    if (!state.lastUserMessage) { toast("No previous message to regenerate"); return; }
+    await triggerSend(state.lastUserMessage);
+  }
+
+  async function handleAvatarUpload(type, file) {
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const compressed = await compressImage(dataUrl, 200, 0.8);
+      if (type === "user") {
+        state.avatars.user = compressed;
+        $("avatarUserPreview").src = compressed;
+        $("avatarUserPreview").style.display = "block";
+      } else {
+        state.avatars.ai = compressed;
+        $("avatarAIPreview").src = compressed;
+        $("avatarAIPreview").style.display = "block";
+      }
+      await saveAvatarsToDB();
+      saveAvatarsLocal();
+      renderAllMessages();
+      toast("Profile picture saved");
+    } catch (e) {
+      toast("Could not upload image: " + e.message);
+    }
+  }
+
+  // ===== INSTÄLLNINGSMENY (drawer) =====
+  function closeDrawer() {
+    $("drawer").classList.remove("open");
+    $("drawerBackdrop").classList.remove("show");
+  }
+  $("btnMenu").onclick = () => {
+    $("drawer").classList.add("open");
+    $("drawerBackdrop").classList.add("show");
+  };
+  $("btnDrawerClose").onclick = closeDrawer;
+  $("drawerBackdrop").onclick = closeDrawer;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+  // ===== TOM KATEGORI I PROMPTMALLEN =====
+  [
+    "ddQuality","ddSubject","ddPose","ddClothing","ddSetting","ddLighting","ddCamera",
+    "ddBodyType","ddHairColor","ddHairStyle","ddEyeColor","ddTattoo","ddPiercing","ddNudity","ddExplicit"
+  ].forEach(id => {
+    const o = document.createElement("option");
+    o.value = "";
+    o.textContent = "— Tom —";
+    $(id).prepend(o);
+  });
+
+  // ===== KAMERA (mobil: capture öppnar kameran) =====
+  $("btnCamera").onclick = () => $("cameraInput").click();
+  $("cameraInput").onchange = async () => {
+    if ($("cameraInput").files?.length) await addFiles($("cameraInput").files);
+    $("cameraInput").value = "";
+  };
+  $("btnAvatarUserCamera").onclick = () => $("avatarUserCamera").click();
+  $("avatarUserCamera").onchange = (e) => {
+    if (e.target.files[0]) handleAvatarUpload("user", e.target.files[0]);
+    e.target.value = "";
+  };
+  $("btnAvatarAICamera").onclick = () => $("avatarAICamera").click();
+  $("avatarAICamera").onchange = (e) => {
+    if (e.target.files[0]) handleAvatarUpload("ai", e.target.files[0]);
+    e.target.value = "";
+  };
+
+  // ===== NAMN =====
+  $("userNameInput").addEventListener("change", () => {
+    state.userName = $("userNameInput").value.trim();
+    saveLocal(); renderAllMessages();
+  });
+  $("assistantNameInput").addEventListener("change", () => {
+    state.assistantName = $("assistantNameInput").value.trim();
+    saveLocal(); renderAllMessages();
+  });
+
+  // events
+  $("btnSend").onclick = handleSend;
+  $("btnImage").onclick = () => {
+    const text = $("prompt").value.trim();
+    if (!text) return toast("Write an image prompt first");
+    $("prompt").value = "";
+    autoGrow();
+    generateImage(text.replace(/^\/img(?:age)?\s*/i, "").slice(0, 350));
+  };
+  $("btnAttach").onclick = () => $("fileInput").click();
+  $("fileInput").onchange = async () => {
+    if ($("fileInput").files?.length) await addFiles($("fileInput").files);
+    $("fileInput").value = "";
+  };
+  $("btnStop").onclick = () => state.abort?.abort();
+  $("btnClear").onclick = () => {
+    if (confirm("Clear entire chat?")) {
+      state.messages = []; state.pendingImages = []; renderAttachBar();
+      state.selectedImages.clear();
+      saveLocal(); renderAllMessages();
+    }
+  };
+  $("btnRegenerate").onclick = regenerateLastUserMessage;
+  $("btnExport").onclick = () => {
+    const blob = new Blob([JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      messages: state.messages.map(m => ({
+        role: m.role, content: m.content, enPrompt: m.enPrompt, imagePrompt: m.imagePrompt, ts: m.ts,
+        images: m.images || []
+      }))
+    }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `nsfw-chat-${Date.now()}.json`;
+    a.click();
+  };
+  $("btnRefresh").onclick = refreshConnections;
+  $("btnTestComfy").onclick = () => testComfyUI(true);
+  $("btnTestOllama").onclick = () => testOllama(true);
+  $("btnClearGallery").onclick = async () => {
+    state.gallery = [];
+    renderGallery();
+    await clearGalleryDB();
+    toast("Gallery cleared");
+  };
+  $("btnRegenLast").onclick = () => {
+    if (state.lastImagePrompt) generateImage(state.lastImagePrompt);
+    else toast("No previous prompt");
+  };
+  $("presetDefault").onclick = () => applyPreset("default");
+  $("presetRomance").onclick = () => applyPreset("romance");
+  $("presetExplicit").onclick = () => applyPreset("explicit");
+  $("presetDom").onclick = () => applyPreset("dom");
+  $("prompt").addEventListener("input", autoGrow);
+  $("prompt").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  });
+
+  $("avatarUserInput").addEventListener("change", (e) => {
+    if (e.target.files[0]) handleAvatarUpload("user", e.target.files[0]);
+  });
+  $("avatarAIInput").addEventListener("change", (e) => {
+    if (e.target.files[0]) handleAvatarUpload("ai", e.target.files[0]);
+  });
+
+  [
+    "ddQuality","ddSubject","ddPose","ddClothing","ddSetting","ddLighting","ddCamera",
+    "ddBodyType","ddHairColor","ddHairStyle","ddEyeColor","ddTattoo","ddPiercing","ddNudity","ddExplicit",
+    "ddCustomTags","usePromptTemplate","numImages"
+  ].forEach(id => $(id).addEventListener("change", saveLocal));
+
+  [
+    "ollamaUrl","comfyUrl","systemPrompt","stylePos","styleNeg","imgW","imgH","steps","cfg",
+    "sampler","scheduler","numCtx","modelSelect","visionSelect","ckptSelect",
+    "streamToggle","autoImage","translatePrompt","showEnPrompt"
+  ].forEach(id => $(id).addEventListener("change", saveLocal));
+
+  // autoImage toggle – bara toast
+  $('autoImage').addEventListener('change', function() {
+      if (this.checked) {
+          toast("Auto-image from /image enabled");
+      } else {
+          toast("Auto-image from /image disabled");
+      }
+  });
+
+  // boot
+  async function boot() {
+    // IndexedDB kan vara otillgänglig (t.ex. file:// i Safari) — fortsätt ändå.
+    try { await openDB(); } catch (e) { console.warn("IndexedDB otillgänglig:", e); }
+    await reloadGalleryFromDB();
+    loadLocal();
+
+    // Chatt: localStorage-mirror först (tillförlitligt), IndexedDB som reserv.
+    const savedMessages = loadChatLocal();
+    if (!savedMessages.length) {
+      try { savedMessages.push(...(await loadMessagesFromDB())); } catch (e) {}
+    }
+    if (savedMessages.length) state.messages = savedMessages;
+
+    // Avatars: mirror först, annars IndexedDB.
+    const localAvatars = loadAvatarsLocal();
+    if (localAvatars) {
+      state.avatars.user = localAvatars.user || null;
+      state.avatars.ai = localAvatars.ai || null;
+    } else {
+      try {
+        const avatars = await loadAvatarsFromDB();
+        state.avatars.user = avatars.user || null;
+        state.avatars.ai = avatars.ai || null;
+      } catch (e) {}
+    }
+    if (state.avatars.user) {
+      $("avatarUserPreview").src = state.avatars.user;
+      $("avatarUserPreview").style.display = "block";
+    }
+    if (state.avatars.ai) {
+      $("avatarAIPreview").src = state.avatars.ai;
+      $("avatarAIPreview").style.display = "block";
+    }
+    initTheme();
+    initLang(); // Sätt språk initialt
+    if (!$("numCtx").value) $("numCtx").value = 131072;
+    renderAllMessages();
+    renderGallery();
+    refreshConnections();
+    // ===== NYTT: Markera att uppstarten är klar =====
+    bootComplete = true;
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
