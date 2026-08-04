@@ -374,8 +374,8 @@
       margin-left: 5px;
     }
     .avatar {
-      width: 96px;
-      height: 96px;
+      width: 112px;
+      height: 112px;
       border-radius: 50%;
       object-fit: cover;
       margin-right: 10px;
@@ -1139,7 +1139,21 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
   // IndexedDB kan vara otillgänglig (t.ex. file:// i Safari) — då tappades
   // allt vid omladdning. Mirroret skrivs direkt och är primär källa vid start.
   function saveChatLocal() {
-    try { localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(state.messages)); } catch (e) {}
+    try {
+      localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(state.messages));
+    } catch (e) {
+      // localStorage-quotan räcker inte till alla bilder — spara utan bilder som
+      // reserv så texten i alla fall överlever. Bilderna tas från IndexedDB i stället.
+      try {
+        const stripped = state.messages.map(m => {
+          const copy = { ...m };
+          delete copy.images;
+          delete copy.attachDataUrl;
+          return copy;
+        });
+        localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(stripped));
+      } catch {}
+    }
   }
   function loadChatLocal() {
     try {
@@ -1159,16 +1173,16 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 
   async function saveMessagesToDB() {
     if (!db) return;
-    const tx = db.transaction("chat", "readwrite");
-    const store = tx.objectStore("chat");
-    await new Promise((resolve, reject) => {
-      const req = store.clear();
-      req.onsuccess = resolve;
-      req.onerror = reject;
-    });
-    store.put({ id: "messages", messages: state.messages });
+    // clear + put skickas i samma task — att vänta på clear först kan göra
+    // transaktionen inaktiv och put kastar TransactionInactiveError.
     return new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
+      const tx = db.transaction("chat", "readwrite");
+      const store = tx.objectStore("chat");
+      const clearReq = store.clear();
+      clearReq.onerror = () => reject(clearReq.error);
+      const putReq = store.put({ id: "messages", messages: state.messages });
+      putReq.onerror = () => reject(putReq.error);
+      tx.oncomplete = () => resolve();
       tx.onerror = (e) => reject(e.target.error);
     });
   }
@@ -1417,7 +1431,8 @@ Answer in the user's language.`
         if (typeof d.useTemplate === "boolean") $("usePromptTemplate").checked = d.useTemplate;
         if (d.numImages) $("numImages").value = d.numImages;
         for (const k of Object.keys(DD_DEFAULTS)) {
-          $(k).value = d[k] || DD_DEFAULTS[k];
+          // Behåll även "— Tom —" (tom sträng) — annars nollställs till default vid omladdning.
+          $(k).value = d[k] !== undefined && d[k] !== null ? d[k] : DD_DEFAULTS[k];
         }
         if (d.ddCustomTags != null) $("ddCustomTags").value = d.ddCustomTags;
         if (d.userName != null) $("userNameInput").value = d.userName;
@@ -2433,6 +2448,8 @@ Rules:
         } catch (e) {
           if (e.name === "AbortError") throw e;
           toast(`Image ${idx+1} failed: ${e.message}`, 4000);
+          // Spara felet i chatten så det inte försvinner med toasten.
+          updateMessageEl(note.id, `${msg.images.length} of ${num} image(s) done…\nImage ${idx+1} failed: ${e.message}`, { images: msg.images.slice() });
         }
       }));
       if (state.abort?.signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -2473,7 +2490,26 @@ Rules:
       body: JSON.stringify({ prompt: workflow, client_id: clientId }),
       signal,
     });
-    if (!res.ok) throw new Error(`ComfyUI /prompt ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      // Plocka ut det riktiga felet (t.ex. "Value not in list: lora_name: 'x'") ur node_errors.
+      let detail = "";
+      try { detail = await res.text(); } catch {}
+      try {
+        const j = JSON.parse(detail);
+        const ne = j.node_errors;
+        if (ne) {
+          const first = Object.values(ne)[0];
+          const err = first?.errors?.[0];
+          const msg = err?.message || err?.type || "";
+          const det = err?.details || "";
+          detail = msg + (det && det !== msg ? " — " + det : "");
+          if (!detail) detail = JSON.stringify(ne).slice(0, 500);
+        } else if (j?.error?.message) {
+          detail = j.error.message + (j.error.details ? " — " + j.error.details : "");
+        }
+      } catch {}
+      throw new Error(`ComfyUI: ${String(detail).slice(0, 600)}`);
+    }
     const pj = await res.json();
     const promptId = pj.prompt_id;
     if (!promptId) throw new Error("No prompt_id");
@@ -2695,11 +2731,18 @@ Rules:
     await reloadGalleryFromDB();
     loadLocal();
 
-    // Chatt: localStorage-mirror först (tillförlitligt), IndexedDB som reserv.
-    const savedMessages = loadChatLocal();
-    if (!savedMessages.length) {
-      try { savedMessages.push(...(await loadMessagesFromDB())); } catch (e) {}
-    }
+    // Chatt: välj den källa som är mest komplett — bilder väger tyngst.
+    // Annars försvinner bilderna om localStorage-spegeln är för gammal (quota)
+    // medan IndexedDB har allt.
+    const fromMirror = loadChatLocal();
+    let fromDB = [];
+    try { fromDB = await loadMessagesFromDB(); } catch (e) {}
+    const chatScore = (arr) => {
+      let imgs = 0;
+      for (const m of arr) imgs += (m.images?.length || 0) + (m.attachDataUrl ? 1 : 0);
+      return arr.length + imgs * 1000;
+    };
+    const savedMessages = chatScore(fromDB) > chatScore(fromMirror) ? fromDB : fromMirror;
     if (savedMessages.length) state.messages = savedMessages;
 
     // Avatars: mirror först, annars IndexedDB.
