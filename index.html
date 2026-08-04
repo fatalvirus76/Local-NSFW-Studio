@@ -225,6 +225,24 @@
       font-size: 10px; color: var(--muted); padding: 6px 8px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    .gallery-del-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 16px;
+      line-height: 22px;
+      text-align: center;
+      cursor: pointer;
+      z-index: 11;
+    }
+    .gallery-del-btn:hover { background: var(--err); }
+    .gallery-delete-selected { margin-bottom: 2px; }
     .empty {
       color: var(--muted); font-size: 13px; text-align: center; padding: 24px 8px;
       border: 1px dashed var(--border); border-radius: 12px;
@@ -242,6 +260,15 @@
     }
     .modal.open { display: flex; }
     .modal img { max-width: min(96vw, 1100px); max-height: 92vh; border-radius: 12px; border: 1px solid var(--border); }
+    .lightbox-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,.55); color: #fff; border: none;
+      width: 44px; height: 64px; font-size: 30px; line-height: 1; cursor: pointer;
+      z-index: 10; border-radius: 10px;
+    }
+    .lightbox-nav:hover { background: rgba(0,0,0,.85); }
+    .lightbox-prev { left: 12px; }
+    .lightbox-next { right: 12px; }
     .toast {
       position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px);
       background: var(--bg2); border: 1px solid var(--border); color: var(--text);
@@ -345,10 +372,57 @@
     .image-grid figure:hover .download-single-btn {
       display: block;
     }
+    /* ===== NYTT: Knapp för img2img-variationer ===== */
+    .variation-single-btn {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      line-height: 22px;
+      text-align: center;
+      cursor: pointer;
+      display: none;
+      z-index: 11;
+    }
+    .image-grid figure:hover .variation-single-btn {
+      display: block;
+    }
+    .tag-single-btn {
+      position: absolute;
+      top: 6px;
+      left: 34px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 13px;
+      line-height: 22px;
+      text-align: center;
+      cursor: pointer;
+      display: none;
+      z-index: 11;
+    }
+    .image-grid figure:hover .tag-single-btn,
+    .attach-wrap:hover .tag-single-btn {
+      display: block;
+    }
     .delete-selected-btn {
       display: none;
       margin-bottom: 4px;
       position: static;
+      /* ===== FIX: knappen ska sträcka sig över hela rutnätets bredd,
+      inte sitta i en enskild grid-cell (200 px) bredvid bilderna. ===== */
+      grid-column: 1 / -1;
+      width: fit-content;
+      justify-self: start;
       background: var(--err);
       color: white;
       border: none;
@@ -426,6 +500,13 @@
       background: var(--err);
     }
 
+    /* ===== versionsmärke ===== */
+    .ver-badge {
+      font-size: 10px; font-weight: normal; vertical-align: middle;
+      background: var(--accent); color: #fff; padding: 1px 6px;
+      border-radius: 8px; margin-left: 6px; opacity: .85;
+    }
+
     /* ===== språkväxlare ===== */
     .lang-picker { display: flex; gap: 4px; margin-left: 12px; }
     .lang-btn {
@@ -444,7 +525,7 @@
   <div class="drop-overlay" id="dropOverlay">Släpp bild här för analys</div>
 
   <header>
-    <h1>✦ Local NSFW Studio — Ollama + ComfyUI</h1>
+    <h1>✦ Local NSFW Studio — Ollama + ComfyUI <span class="ver-badge" id="verBadge">v2.1</span></h1>
     <div class="status-row">
       <span><i class="dot" id="ollamaDot"></i>Ollama <span id="ollamaStatus">…</span></span>
       <span><i class="dot" id="comfyDot"></i>ComfyUI <span id="comfyStatus">…</span></span>
@@ -495,6 +576,7 @@
 
       <label>Comfy checkpoint (A–Ö)</label>
       <select id="ckptSelect"><option value="">Laddar…</option></select>
+
     </div>
 
     <div>
@@ -911,6 +993,32 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="blindfolded gagged">blindfolded, gagged</option>
 <option value="sex toys vibrator dildo">sex toys, vibrator, dildo</option>
 <option value="amateur selfie POV style">amateur, selfie, POV style</option>
+<option value="titfucking between breasts">titfucking, between breasts</option>
+<option value="handjob cumshot on chest">handjob, cumshot on chest</option>
+<option value="cumshot covering face">cumshot, covering face</option>
+<option value="deep throat gagging">deep throat, gagging</option>
+<option value="face fucking rough oral">face fucking, rough oral</option>
+<option value="cunnilingus eating pussy">cunnilingus, eating pussy</option>
+<option value="rimming ass licking">rimming, ass licking</option>
+<option value="wet pussy dripping arousal">wet pussy, dripping arousal</option>
+<option value="squirting spraying fluids">squirting, spraying fluids</option>
+<option value="gangbang multiple men">gangbang, multiple men</option>
+<option value="threesome two girls one guy">threesome, two girls one guy</option>
+<option value="double penetration both holes">double penetration, both holes</option>
+<option value="reverse cowgirl bouncing">reverse cowgirl, bouncing</option>
+<option value="lotus position face to face">lotus position, face to face</option>
+<option value="standing fuck against wall">standing fuck, against wall</option>
+<option value="mirror sex watching themselves">mirror sex, watching themselves</option>
+<option value="shower sex water running">shower sex, water running</option>
+<option value="rough passionate sex bed">rough passionate sex, bed</option>
+<option value="slow sensual lovemaking">slow sensual lovemaking</option>
+<option value="edging teasing denied orgasm">edging, teasing, denied orgasm</option>
+<option value="multiple orgasms overstimulation">multiple orgasms, overstimulation</option>
+<option value="bdsm flogging red marks">bdsm, flogging, red marks</option>
+<option value="nipple clamps chains">nipple clamps, chains</option>
+<option value="wax play hot candle drips">wax play, hot candle drips</option>
+<option value="sex machine relentless fucking">sex machine, relentless fucking</option>
+<option value="outdoor public sex risky">outdoor, public sex, risky</option>
 </select>
 </div>
 
@@ -920,6 +1028,7 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
       <textarea id="stylePos" rows="3">20 years old, youthful body, natural skin details, masterpiece, best quality, highly detailed, cinematic lighting, sharp focus</textarea>
       <label>Negativ prompt</label>
       <textarea id="styleNeg" rows="3">boy, child, childlike features, loli, shota, young boy, underage, lowres, blurry, bad anatomy, bad hands, text, watermark, extra fingers, cropped, worst quality, jpeg artifacts</textarea>
+
       <div class="row">
         <div><label>Bredd</label><input type="number" id="imgW" value="768" min="256" max="2048" step="64" /></div>
         <div><label>Höjd</label><input type="number" id="imgH" value="1024" min="256" max="2048" step="64" /></div>
@@ -992,7 +1101,12 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
     <div class="empty" id="galleryEmpty">Inga bilder ännu</div>
   </section>
 
-  <div class="modal" id="lightbox"><img alt="preview" id="lightboxImg" /></div>
+  <div class="modal" id="lightbox">
+    <img alt="preview" id="lightboxImg" />
+    <button class="lightbox-nav lightbox-prev" id="lightboxPrev" title="Föregående (←)">‹</button>
+    <button class="lightbox-nav lightbox-next" id="lightboxNext" title="Nästa (→)">›</button>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -1142,17 +1256,29 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
     try {
       localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(state.messages));
     } catch (e) {
-      // localStorage-quotan räcker inte till alla bilder — spara utan bilder som
-      // reserv så texten i alla fall överlever. Bilderna tas från IndexedDB i stället.
+      // Quotan räcker inte till fullstora bilder — spara komprimerade miniatyrer
+      // (thumb) så att bilderna ändå syns i chatten efter omladdning.
       try {
-        const stripped = state.messages.map(m => {
+        const compact = state.messages.map(m => {
           const copy = { ...m };
-          delete copy.images;
-          delete copy.attachDataUrl;
+          if (copy.images) copy.images = copy.images.map(im => ({ ...im, url: im.thumb || im.url }));
+          if (copy.attachDataUrl) copy.attachDataUrl = copy.attachThumb || copy.attachDataUrl;
+          delete copy.attachThumb;
           return copy;
         });
-        localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(stripped));
-      } catch {}
+        localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(compact));
+      } catch (e2) {
+        // Sista utvägen: text utan bilder.
+        try {
+          const stripped = state.messages.map(m => {
+            const copy = { ...m };
+            delete copy.images;
+            delete copy.attachDataUrl;
+            return copy;
+          });
+          localStorage.setItem("nsfw_studio_chat_v1", JSON.stringify(stripped));
+        } catch {}
+      }
     }
   }
   function loadChatLocal() {
@@ -1270,6 +1396,7 @@ Answer in the user's language.`
     assistantName: "",
     timedOut: false,
     chatLock: false,
+    selectedGallery: new Set(),
   };
   const LS_KEY = "nsfw_studio_v6";
   const DD_DEFAULTS = {
@@ -1318,14 +1445,27 @@ Answer in the user's language.`
     return u;
   }
 
-  function sortAlpha(list) {
-    return [...list].sort((a, b) =>
-      String(a).localeCompare(String(b), "en", { sensitivity: "base", numeric: true })
-    );
-  }
 
-  function fillSelect(sel, items, saved, allowEmptyLabel) {
-    const cur = saved || sel.value;
+  // ===== HJÄLPARE =====
+  async function fetchWithTimeout(url, ms, opts = {}) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      return await fetch(url, { ...opts, signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  function sortAlpha(list) {
+    return [...list].sort((a, b) => String(a).localeCompare(String(b), "en", { sensitivity: "base", numeric: true }));
+  }
+  function visionHint(name) { return VISION_HINT.test(name); }
+  function uid() { return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function setDiag(text, cls) {
+    comfyDiag.textContent = text;
+    comfyDiag.className = "diag " + (cls || "");
+  }
+  function fillSelect(sel, items, selected, allowEmptyLabel) {
     sel.innerHTML = "";
     if (allowEmptyLabel) {
       const o = document.createElement("option");
@@ -1333,40 +1473,93 @@ Answer in the user's language.`
       o.textContent = allowEmptyLabel;
       sel.appendChild(o);
     }
-    if (!items.length && !allowEmptyLabel) {
-      sel.innerHTML = `<option value="">None found</option>`;
-      return;
+    for (const it of items) {
+      const o = document.createElement("option");
+      o.value = it;
+      o.textContent = it;
+      sel.appendChild(o);
     }
-    for (const name of sortAlpha(items)) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      sel.appendChild(opt);
+    if (selected && items.includes(selected)) sel.value = selected;
+    else if (!allowEmptyLabel && items.length) sel.value = items[0];
+  }
+  let toastTimer = null;
+  function toast(text, ms = 2600) {
+    toastEl.textContent = text;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), ms);
+  }
+  // ===== LIGHTBOX MED NAVIGERING (←/→ och ◀/▶-knappar) =====
+  let lightboxItems = [];
+  let lightboxIndex = 0;
+  function openLightbox(url, items = null) {
+    if (Array.isArray(items) && items.length) {
+      lightboxItems = items;
+      lightboxIndex = items.indexOf(url);
+      if (lightboxIndex < 0) lightboxIndex = 0;
+    } else {
+      lightboxItems = [url];
+      lightboxIndex = 0;
     }
-    if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+    $("lightboxImg").src = url;
+    $("lightbox").classList.add("open");
+  }
+  function lightboxShow(i) {
+    if (!lightboxItems.length) return;
+    lightboxIndex = (i + lightboxItems.length) % lightboxItems.length;
+    $("lightboxImg").src = lightboxItems[lightboxIndex];
+  }
+  function lightboxNext() { lightboxShow(lightboxIndex + 1); }
+  function lightboxPrev() { lightboxShow(lightboxIndex - 1); }
+  function closeLightbox() { $("lightbox").classList.remove("open"); }
+  function dataUrlToB64(dataUrl) {
+    const i = dataUrl.indexOf(",");
+    return i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+  }
+  function compressImage(dataUrl, maxSide, quality) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => {
+        let { width: w, height: h } = im;
+        const s = Math.min(1, maxSide / Math.max(w, h));
+        w = Math.round(w * s); h = Math.round(h * s);
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext("2d");
+        ctx.drawImage(im, 0, 0, w, h);
+        resolve(cv.toDataURL("image/jpeg", quality));
+      };
+      im.onerror = () => resolve(dataUrl);
+      im.src = dataUrl;
+    });
   }
 
+  // ===== SPARA / LADDA =====
   function saveLocal() {
     const data = {
       theme: currentTheme,
       lang: currentLang,
       ollamaUrl: $("ollamaUrl").value,
       comfyUrl: $("comfyUrl").value,
+      model: $("modelSelect").value || state._savedModel,
+      vision: $("visionSelect").value || state._savedVision,
+      ckpt: $("ckptSelect").value || state._savedCkpt,
       systemPrompt: $("systemPrompt").value,
       stylePos: $("stylePos").value,
       styleNeg: $("styleNeg").value,
-      imgW: $("imgW").value, imgH: $("imgH").value,
-      steps: $("steps").value, cfg: $("cfg").value,
-      sampler: $("sampler").value, scheduler: $("scheduler").value,
+      imgW: $("imgW").value,
+      imgH: $("imgH").value,
+      steps: $("steps").value,
+      cfg: $("cfg").value,
+      numImages: $("numImages").value,
+      seed: $("seed").value,
+      sampler: $("sampler").value,
+      scheduler: $("scheduler").value,
       numCtx: $("numCtx").value,
       stream: $("streamToggle").checked,
       autoImage: $("autoImage").checked,
       translatePrompt: $("translatePrompt").checked,
       showEnPrompt: $("showEnPrompt").checked,
-      // ===== ÄNDRAT: Spara inte tomma värden om selectsen inte hunnit laddas =====
-      model: $("modelSelect").value || state._savedModel,
-      vision: $("visionSelect").value || state._savedVision,
-      ckpt: $("ckptSelect").value || state._savedCkpt,
       useTemplate: $("usePromptTemplate").checked,
       ddQuality: $("ddQuality").value,
       ddSubject: $("ddSubject").value,
@@ -1386,15 +1579,10 @@ Answer in the user's language.`
       ddCustomTags: $("ddCustomTags").value,
       userName: $("userNameInput").value,
       assistantName: $("assistantNameInput").value,
-      numImages: $("numImages").value,
       lastUserMessage: state.lastUserMessage,
     };
-    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {
-      try { localStorage.clear(); localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
-    }
-    // ===== ÄNDRAT: Debounce för IndexedDB-sparning + skippa före boot =====
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {}
     if (bootComplete) {
-      // localStorage-mirror direkt (tillförlitligt), IndexedDB debounce:ad som reserv.
       saveChatLocal();
       saveAvatarsLocal();
       clearTimeout(saveTimer);
@@ -1404,220 +1592,61 @@ Answer in the user's language.`
       }, 400);
     }
   }
-
   function loadLocal() {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (raw) {
-        const d = JSON.parse(raw);
-        if (d.theme && ["dark","light","synthwave","dracula"].includes(d.theme)) {
-          currentTheme = d.theme;
-          applyTheme(d.theme);
-        }
-        // ===== ÄNDRAT: Sätt bara språket, låt initLang sköta UI-uppdatering =====
-        if (d.lang === "en" || d.lang === "sv") {
-          currentLang = d.lang;
-        }
-        for (const [k, id] of Object.entries({
-          ollamaUrl: "ollamaUrl", comfyUrl: "comfyUrl", systemPrompt: "systemPrompt",
-          stylePos: "stylePos", styleNeg: "styleNeg", imgW: "imgW", imgH: "imgH",
-          steps: "steps", cfg: "cfg", sampler: "sampler", scheduler: "scheduler", numCtx: "numCtx",
-        })) if (d[k] != null) $(id).value = d[k];
-        if (!$("numCtx").value) $("numCtx").value = 131072;
-        if (typeof d.stream === "boolean") $("streamToggle").checked = d.stream;
-        if (typeof d.autoImage === "boolean") $("autoImage").checked = d.autoImage;
-        if (typeof d.translatePrompt === "boolean") $("translatePrompt").checked = d.translatePrompt;
-        if (typeof d.showEnPrompt === "boolean") $("showEnPrompt").checked = d.showEnPrompt;
-        if (typeof d.useTemplate === "boolean") $("usePromptTemplate").checked = d.useTemplate;
-        if (d.numImages) $("numImages").value = d.numImages;
-        for (const k of Object.keys(DD_DEFAULTS)) {
-          // Behåll även "— Tom —" (tom sträng) — annars nollställs till default vid omladdning.
-          $(k).value = d[k] !== undefined && d[k] !== null ? d[k] : DD_DEFAULTS[k];
-        }
-        if (d.ddCustomTags != null) $("ddCustomTags").value = d.ddCustomTags;
-        if (d.userName != null) $("userNameInput").value = d.userName;
-        if (d.assistantName != null) $("assistantNameInput").value = d.assistantName;
-        state.userName = d.userName || "";
-        state.assistantName = d.assistantName || "";
-        if (d.lastUserMessage) state.lastUserMessage = d.lastUserMessage;
-        state._savedModel = d.model || "";
-        state._savedCkpt = d.ckpt || "";
-        state._savedVision = d.vision || "";
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.theme) applyTheme(d.theme);
+      if (d.lang) setLanguage(d.lang, true);
+      if (d.ollamaUrl) $("ollamaUrl").value = d.ollamaUrl;
+      if (d.comfyUrl) $("comfyUrl").value = d.comfyUrl;
+      if (d.systemPrompt != null) $("systemPrompt").value = d.systemPrompt;
+      if (d.stylePos != null) $("stylePos").value = d.stylePos;
+      if (d.styleNeg != null) $("styleNeg").value = d.styleNeg;
+      if (d.imgW) $("imgW").value = d.imgW;
+      if (d.imgH) $("imgH").value = d.imgH;
+      if (d.steps) $("steps").value = d.steps;
+      if (d.cfg) $("cfg").value = d.cfg;
+      if (d.numImages) $("numImages").value = d.numImages;
+      if (d.seed != null && d.seed !== "") $("seed").value = d.seed;
+      if (d.sampler) $("sampler").value = d.sampler;
+      if (d.scheduler) $("scheduler").value = d.scheduler;
+      if (d.numCtx) $("numCtx").value = d.numCtx;
+      if (d.stream != null) $("streamToggle").checked = d.stream;
+      if (d.autoImage != null) $("autoImage").checked = d.autoImage;
+      if (d.translatePrompt != null) $("translatePrompt").checked = d.translatePrompt;
+      if (d.showEnPrompt != null) $("showEnPrompt").checked = d.showEnPrompt;
+      if (d.useTemplate != null) $("usePromptTemplate").checked = d.useTemplate;
+      state._savedModel = d.model || "";
+      state._savedCkpt = d.ckpt || "";
+      state._savedVision = d.vision || "";
+      for (const k of Object.keys(DD_DEFAULTS)) {
+        // Behåll även "— Tom —" (tom sträng) — annars nollställs till default vid omladdning.
+        $(k).value = d[k] !== undefined && d[k] !== null ? d[k] : DD_DEFAULTS[k];
       }
-    } catch {}
+      if (d.ddCustomTags != null) $("ddCustomTags").value = d.ddCustomTags;
+      if (d.userName != null) $("userNameInput").value = d.userName;
+      if (d.assistantName != null) $("assistantNameInput").value = d.assistantName;
+      state.userName = d.userName || "";
+      state.assistantName = d.assistantName || "";
+      if (d.lastUserMessage) state.lastUserMessage = d.lastUserMessage;
+    } catch (e) {}
   }
 
-  function toast(msg, ms = 2800) {
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => toastEl.classList.remove("show"), ms);
-  }
-
-  // state.busy = "det körs något" (progress + stopp-knapp).
-  function setBusy(b) {
-    state.busy = b;
-    progressEl.style.display = b ? "block" : "none";
-    $("btnStop").disabled = !b;
-    if (!b) setChatLock(false);
-  }
-  // state.chatLock = bara en chatt åt gången; bildgenerering blockar INTE chatten.
-  function setChatLock(b) {
-    state.chatLock = b;
-    $("btnSend").disabled = b;
-    $("btnImage").disabled = b;
-    $("btnAttach").disabled = b;
-  }
-
-  function uid() { return Math.random().toString(36).slice(2, 10); }
-
-  function setDiag(text, cls) {
-    comfyDiag.textContent = text;
-    comfyDiag.className = "diag" + (cls ? " " + cls : "");
-  }
-
-  function getCtx() {
-    const n = parseInt($("numCtx").value, 10);
-    return Number.isFinite(n) && n >= 2048 ? n : 131072;
-  }
-
-  async function fetchWithTimeout(url, ms = 6000, opt = {}) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), ms);
-    try {
-      return await fetch(url, { cache: "no-store", mode: "cors", ...opt, signal: opt.signal || ctrl.signal });
-    } finally { clearTimeout(t); }
-  }
-
-  // ---------- attachments / vision ----------
-  function renderAttachBar() {
-    attachBar.innerHTML = "";
-    for (const img of state.pendingImages) {
-      const d = document.createElement("div");
-      d.className = "thumb";
-      d.innerHTML = `<img src="${img.dataUrl}" alt=""><button title="Ta bort">×</button>`;
-      d.querySelector("button").onclick = () => {
-        state.pendingImages = state.pendingImages.filter(x => x.id !== img.id);
-        renderAttachBar();
-      };
-      attachBar.appendChild(d);
-    }
-  }
-
-  function attachAvatarForAnalysis(role) {
-    const dataUrl = role === "user" ? state.avatars.user : state.avatars.ai;
-    if (!dataUrl) return toast("Sätt en profilbild först");
-    state.pendingImages.push({
-      id: uid(),
-      dataUrl,
-      b64: dataUrlToB64(dataUrl),
-      mime: "image/jpeg",
-      name: "avatar.jpg"
-    });
-    renderAttachBar();
-    toast("Avatar bifogad för analys — tryck Skicka");
-  }
-
-  function dataUrlToB64(dataUrl) {
-    const i = dataUrl.indexOf(",");
-    return i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
-  }
-
-  function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-  }
-
-  async function compressImage(dataUrl, maxSide = 1280, quality = 0.88) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        const scale = Math.min(1, maxSide / Math.max(width, height));
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
-        const c = document.createElement("canvas");
-        c.width = width; c.height = height;
-        const ctx = c.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        const out = c.toDataURL("image/jpeg", quality);
-        resolve(out);
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    });
-  }
-
-  async function addFiles(fileList) {
-    const files = [...fileList].filter(f => f.type.startsWith("image/"));
-    if (!files.length) return toast("Inga bilder i urvalet");
-    for (const f of files) {
-      let dataUrl = await readFileAsDataUrl(f);
-      dataUrl = await compressImage(dataUrl);
-      state.pendingImages.push({
-        id: uid(),
-        dataUrl,
-        b64: dataUrlToB64(dataUrl),
-        mime: "image/jpeg",
-        name: f.name || "image.jpg",
-      });
-    }
-    renderAttachBar();
-    toast(`${files.length} bild(er) bifogad(e)`);
-  }
-
-  document.addEventListener("paste", async (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const files = [];
-    for (const it of items) {
-      if (it.type.startsWith("image/")) {
-        const f = it.getAsFile();
-        if (f) files.push(f);
-      }
-    }
-    if (files.length) {
-      e.preventDefault();
-      await addFiles(files);
-    }
-  });
-
-  let dragDepth = 0;
-  // ===== ÄNDRAT: Array.from för säkrare dragenter =====
-  window.addEventListener("dragenter", (e) => {
-    if (!Array.from(e.dataTransfer.types || []).includes("Files")) return;
-    dragDepth++;
-    dropOverlay.classList.add("show");
-  });
-  window.addEventListener("dragleave", () => {
-    dragDepth = Math.max(0, dragDepth - 1);
-    if (!dragDepth) dropOverlay.classList.remove("show");
-  });
-  window.addEventListener("dragover", (e) => { e.preventDefault(); });
-  window.addEventListener("drop", async (e) => {
-    e.preventDefault();
-    dragDepth = 0;
-    dropOverlay.classList.remove("show");
-    if (e.dataTransfer?.files?.length) await addFiles(e.dataTransfer.files);
-  });
-
-  // ---------- connections ----------
+  // ===== ANSLUTNINGAR =====
   async function probeComfy(base) {
     const endpoints = ["/system_stats", "/object_info/CheckpointLoaderSimple", "/models/checkpoints", "/queue"];
     const result = { ok: false, ckpts: [], tried: [] };
     for (const path of endpoints) {
       try {
         const r = await fetchWithTimeout(base + path, 5000);
-        result.tried.push(`${path} → ${r.status}`);
-        if (!r.ok) continue;
+        if (!r.ok) { result.tried.push(path + " → " + r.status); continue; }
+        result.tried.push(path + " → " + r.status);
         result.ok = true;
         if (path === "/models/checkpoints") {
-          const list = await r.json();
-          if (Array.isArray(list)) result.ckpts = list;
+          const arr = await r.json();
+          if (Array.isArray(arr)) result.ckpts = arr;
         }
         if (path === "/object_info/CheckpointLoaderSimple") {
           const data = await r.json();
@@ -1625,222 +1654,194 @@ Answer in the user's language.`
           if (Array.isArray(arr)) result.ckpts = arr;
         }
       } catch (e) {
-        result.tried.push(`${path} → ${e.message}`);
+        result.tried.push(path + " → fail");
       }
     }
-    if (result.ckpts.length) result.ok = true;
+    if (!result.ckpts.length) result.ok = false;
     return result;
   }
-
   async function testComfyUI(showToast = true) {
     const base = normalizeBaseUrl($("comfyUrl").value);
     $("comfyUrl").value = base;
-    setDiag("Testing " + base + " …");
+    setDiag("Testing " + base + " …", "warn");
     $("comfyDot").className = "dot warn";
     const probe = await probeComfy(base);
     if (probe.ok) {
       fillSelect($("ckptSelect"), probe.ckpts, state._savedCkpt || $("ckptSelect").value);
       $("comfyDot").className = "dot ok";
-      $("comfyStatus").textContent = probe.ckpts.length ? `${probe.ckpts.length} ckpt` : "online";
-      setDiag(`OK ${base}\n` + probe.tried.join("\n") + `\ncheckpoints: ${probe.ckpts.length}`, "ok");
+      $("comfyStatus").textContent = probe.ckpts.length ? probe.ckpts.length + " ckpt" : "online";
+      setDiag("OK " + base + "\n" + probe.tried.join("\n") + "\ncheckpoints: " + probe.ckpts.length, "ok");
+      saveLocal();
       if (showToast) toast("ComfyUI: connected");
+      return true;
     } else {
       $("comfyDot").className = "dot bad";
       $("comfyStatus").textContent = "offline";
-      setDiag(`MISS ${base}\n` + probe.tried.join("\n") + `\n\nStart with --enable-cors-header\nOpen client via http://127.0.0.1:5500`, "bad");
-      if (showToast) toast("ComfyUI offline", 3500);
+      setDiag("MISS " + base + "\n" + probe.tried.join("\n") + "\n\nStart with --enable-cors-header", "bad");
+      if (showToast) toast("ComfyUI: offline");
+      return false;
     }
-    saveLocal();
-    return probe.ok;
   }
-
   async function testOllama(showToast = true) {
     const base = normalizeBaseUrl($("ollamaUrl").value);
     $("ollamaUrl").value = base;
     try {
-      const r = await fetchWithTimeout(base + "/api/tags", 5000);
+      const r = await fetchWithTimeout(base + "/api/tags", 6000);
       if (!r.ok) throw new Error("HTTP " + r.status);
-      const data = await r.json();
-      const models = (data.models || []).map(m => m.name);
-      fillSelect($("modelSelect"), models, state._savedModel || $("modelSelect").value);
-      const visionSorted = sortAlpha(models).sort((a, b) => {
-        const av = VISION_HINT.test(a) ? 0 : 1;
-        const bv = VISION_HINT.test(b) ? 0 : 1;
-        return av - bv || a.localeCompare(b, "en", { sensitivity: "base", numeric: true });
-      });
-      fillSelect($("visionSelect"), visionSorted, state._savedVision || $("visionSelect").value, "Samme som chat / auto");
+      const j = await r.json();
+      const names = (j.models || []).map(m => m.name).filter(Boolean);
+      const sorted = sortAlpha(names);
+      // ===== FIX: skriv inte över den sparade modellen med selectens
+      // placeholder vid boot — annars hoppar valet tillbaka till första
+      // modellen efter varje omladdning. =====
+      const prevModel = $("modelSelect").value;
+      if (prevModel) state._savedModel = prevModel;
+      fillSelect($("modelSelect"), sorted, state._savedModel || "");
+      fillSelect($("visionSelect"), sortAlpha(sorted.filter(visionHint)), state._savedVision || $("visionSelect").value);
       $("ollamaDot").className = "dot ok";
-      $("ollamaStatus").textContent = `${models.length} models`;
-      if (showToast) toast("Ollama: connected");
+      $("ollamaStatus").textContent = sorted.length + " models";
       saveLocal();
+      if (showToast) toast("Ollama: connected (" + sorted.length + " models)");
       return true;
     } catch (e) {
       $("ollamaDot").className = "dot bad";
       $("ollamaStatus").textContent = "offline";
-      if (showToast) toast("Ollama offline: " + e.message);
+      if (showToast) toast("Ollama: offline");
       return false;
     }
   }
-
-  async function refreshConnections() {
-    await Promise.all([testOllama(false), testComfyUI(false)]);
+  function refreshConnections() {
+    testOllama(false);
+    testComfyUI(false);
   }
 
-  // ---------- chat UI ----------
-  function addMessage(role, content, extra = {}) {
-    const msg = { id: uid(), role, content, ...extra, ts: Date.now() };
+  // ===== OLLAMA =====
+  async function ollamaChat({ model, messages, stream = false, images = [], onToken = null }) {
+    const ollamaUrl = normalizeBaseUrl($("ollamaUrl").value);
+    const payload = {
+      model,
+      messages,
+      stream,
+      options: {
+        temperature: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0,
+        presence_penalty: 1.5, repetition_penalty: 1.0,
+        num_ctx: parseInt($("numCtx").value) || 131072,
+      },
+    };
+    if (images && images.length) payload.images = images;
+    // 5 minuters hård gräns
+    state.timedOut = false;
+    const timeoutId = setTimeout(() => { state.timedOut = true; state.abort?.abort(); }, 300000);
+    let res;
+    try {
+      res = await fetch(ollamaUrl + "/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: state.abort?.signal,
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      throw e;
+    }
+    if (!res.ok) { clearTimeout(timeoutId); throw new Error("Ollama " + res.status + ": " + (await res.text()).slice(0, 300)); }
+    if (!stream) {
+      clearTimeout(timeoutId);
+      const j = await res.json();
+      return j?.message?.content || "";
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        for (const line of text.split("\n")) {
+          const t = line.trim();
+          if (!t) continue;
+          try {
+            const p = JSON.parse(t);
+            const chunk = p?.message?.content || "";
+            if (chunk) { full += chunk; onToken?.(full); }
+          } catch {}
+        }
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    return full;
+  }
+  function looksLikeEnglish(text) {
+    const t = (text || "").trim();
+    const swe = (t.match(/[åäöÅÄÖ]/g) || []).length;
+    const letters = (t.match(/[A-Za-zÅÄÖåäö]/g) || []).length;
+    if (!letters) return false;
+    if (swe / letters > 0.02) return false;
+    const swedishWords = /\b(och|jag|det|att|en|ett|med|på|för|som|är|den|var|till|de)\b/i;
+    if (swedishWords.test(t) && swe > 0) return false;
+    return true;
+  }
+  async function translateToEnglish(raw) {
+    if (!$("translatePrompt").checked) return String(raw).slice(0, 350);
+    const text = String(raw || "").trim().slice(0, 350);
+    if (!text) return text;
+    if (looksLikeEnglish(text)) return text;
+    const model = $("modelSelect").value;
+    if (!model) return text;
+    const sys = "Convert the user's image request into ONE single English Stable Diffusion / ComfyUI prompt.\nRules:\n- Output ONLY the English prompt, no quotes, no explanation, no markdown.\n- Keep it visual and concrete: subject, age (adult 18-20), appearance, clothing, pose, setting, lighting, camera, style.\n- All subjects are clearly adult 18+. Prefer young adult look.\n- NSFW allowed when asked. Use explicit, visual tags.\n- Max ~120 words. Comma-separated tags/phrases ok.";
+    try {
+      const out = await ollamaChat({
+        model,
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: text },
+        ],
+        stream: false,
+      });
+      const result = String(out || "").trim().replace(/^["']+|["']+$/g, "").slice(0, 350);
+      return result || text;
+    } catch (e) {
+      return text;
+    }
+  }
+
+  // ===== MEDDELANDEN =====
+  function addMessage(role, content, extras = {}) {
+    const msg = { id: uid(), role, ts: Date.now(), content, images: [], ...extras };
     state.messages.push(msg);
-    appendMessageEl(msg);
     saveLocal();
+    // ===== FIX: meddelandet måste också in i DOM:en direkt — annars syns
+    // varken texten eller bilderna i chatten förrän efter en omladdning. =====
+    appendMessageEl(msg);
+    chatEl.scrollTop = chatEl.scrollHeight;
     return msg;
   }
-
-  // ===== NYTT: Ladda ner data-URL som fil =====
-  function downloadDataUrl(dataUrl, filename) {
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  function updateMessageEl(id, content, extras = {}) {
+    const el = chatEl.querySelector(`[data-id="${id}"]`);
+    const msg = state.messages.find(m => m.id === id);
+    if (msg) {
+      if (content != null) msg.content = content;
+      Object.assign(msg, extras);
+    }
+    if (!el) return;
+    if (content != null) {
+      const c = el.querySelector(".content");
+      if (c) c.textContent = content;
+    }
+    if (extras.images && msg) renderImageGridInto(el, msg);
   }
-
-  // ===== NYTT: Gemensam bildgrid-renderare =====
-  function renderImageGridInto(el, msg) {
-    // Migrera gammal data
-    if (!msg.images && msg.image) {
-      msg.images = [{ url: msg.image }];
-      msg.image = null;
-    }
-
-    const oldGrid = el.querySelector(".image-grid");
-    if (oldGrid) oldGrid.remove();
-    const oldBtn = el.querySelector(".delete-selected-btn");
-    if (oldBtn) oldBtn.remove();
-
-    const imagesArray = msg.images && msg.images.length ? msg.images : (msg.image ? [{ url: msg.image }] : []);
-    if (!imagesArray.length) {
-      updateDeleteButton(msg.id);
-      return;
-    }
-
-    if (msg.role === "assistant") {
-      const careBtn = document.createElement("button");
-      careBtn.className = "delete-selected-btn btn small danger";
-      careBtn.textContent = "Delete selected";
-      careBtn.onclick = (e) => {
-        e.stopPropagation();
-        deleteSelectedImages(msg.id);
-      };
-      el.appendChild(careBtn);
-    }
-
-    const grid = document.createElement("div");
-    grid.className = "image-grid";
-
-    for (let i = 0; i < imagesArray.length; i++) {
-      const imgData = imagesArray[i];
-      const imageId = `${msg.id}_img_${i}`;
-
-      const fig = document.createElement("figure");
-      fig.dataset.imageId = imageId;
-      fig.style.position = "relative";
-
-      const imgEl = document.createElement("img");
-      imgEl.src = imgData.url;
-      imgEl.alt = imgData.seed ? `Seed ${imgData.seed}` : "";
-      imgEl.loading = "lazy";
-      imgEl.addEventListener("click", (e) => {
-        if (state.selectedImages.has(imageId)) {
-          toggleImageSelection(imageId, false, msg.id);
-        } else {
-          openLightbox(imgData.url);
-        }
-      });
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.className = "image-checkbox";
-      cb.dataset.imageId = imageId;
-      cb.addEventListener("change", function(e) {
-        e.stopPropagation();
-        toggleImageSelection(imageId, this.checked, msg.id);
-      });
-
-      const delSingleBtn = document.createElement("button");
-      delSingleBtn.className = "delete-single-btn";
-      delSingleBtn.textContent = "×";
-      delSingleBtn.title = "Delete this image";
-      delSingleBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        deleteSingleImage(msg.id, i);
-      });
-
-      const dlBtn = document.createElement("button");
-      dlBtn.className = "download-single-btn";
-      dlBtn.textContent = "⬇";
-      dlBtn.title = "Download image";
-      dlBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        downloadDataUrl(imgData.url, `nsfw-${Date.now()}-${i}.jpg`);
-      });
-
-      const cap = document.createElement("figcaption");
-      cap.textContent = imgData.seed !== undefined && imgData.seed !== null ? `Seed: ${imgData.seed}` : "";
-
-      fig.appendChild(imgEl);
-      fig.appendChild(cb);
-      fig.appendChild(delSingleBtn);
-      fig.appendChild(dlBtn);
-      fig.appendChild(cap);
-      grid.appendChild(fig);
-    }
-
-    el.appendChild(grid);
-    updateDeleteButton(msg.id);
-  }
-
-  // Meddelande-knappar + radering etc
   function appendMessageEl(msg) {
     const el = document.createElement("div");
-    el.className = `msg ${msg.role === "user" ? "user" : "bot"}`;
+    el.className = "msg " + msg.role;
     el.dataset.id = msg.id;
 
-    // Meddelande-actions
-    const actionsDiv = document.createElement("div");
-    actionsDiv.className = "msg-actions";
+    const headerDiv = document.createElement("div");
+    headerDiv.className = "header";
 
-    const delBtn = document.createElement("button");
-    delBtn.className = "msg-action-btn delete-btn";
-    delBtn.innerHTML = "🗑️";
-    delBtn.title = "Delete message";
-    delBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (confirm("Delete this message?")) {
-        deleteMessage(msg.id);
-      }
-    };
-    actionsDiv.appendChild(delBtn);
-
-    if (msg.role === "user") {
-      const regenBtn = document.createElement("button");
-      regenBtn.className = "msg-action-btn";
-      regenBtn.innerHTML = "↻";
-      regenBtn.title = "Resend this message";
-      regenBtn.onclick = (e) => {
-        e.stopPropagation();
-        regenerateMessage(msg.id);
-      };
-      actionsDiv.appendChild(regenBtn);
-    }
-
-    el.appendChild(actionsDiv);
-
-    // Avatar + meta
     const avatarData = msg.role === "user" ? state.avatars.user : state.avatars.ai;
     if (avatarData) {
-      const headerDiv = document.createElement("div");
-      headerDiv.className = "msg-header";
       const avImg = document.createElement("img");
       avImg.src = avatarData;
       avImg.className = "avatar";
@@ -1855,11 +1856,6 @@ Answer in the user's language.`
         : (state.assistantName || langStrings[currentLang].assistant);
       meta.innerHTML = `<span>${who}</span><span>${new Date(msg.ts || Date.now()).toLocaleTimeString()}</span>`;
       headerDiv.appendChild(meta);
-      el.appendChild(headerDiv);
-      const body = document.createElement("div");
-      body.className = "msg-body";
-      body.textContent = msg.content || "";
-      el.appendChild(body);
     } else {
       const meta = document.createElement("div");
       meta.className = "meta";
@@ -1867,307 +1863,504 @@ Answer in the user's language.`
         ? (state.userName || langStrings[currentLang].you)
         : (state.assistantName || langStrings[currentLang].assistant);
       meta.innerHTML = `<span>${who}</span><span>${new Date(msg.ts || Date.now()).toLocaleTimeString()}</span>`;
-      el.appendChild(meta);
-      const body = document.createElement("div");
-      body.className = "msg-body";
-      body.textContent = msg.content || "";
-      el.appendChild(body);
+      headerDiv.appendChild(meta);
     }
+    el.appendChild(headerDiv);
 
-    // bifogad bild
+    // bifogad bild — med åtgärder (↻ variera, 🏷 tagga)
     if (msg.attachDataUrl) {
+      const wrap = document.createElement("div");
+      wrap.className = "attach-wrap";
+      wrap.style.position = "relative";
+      wrap.style.display = "inline-block";
+
       const img = document.createElement("img");
       img.className = "attach";
       img.src = msg.attachDataUrl;
       img.loading = "lazy";
       img.addEventListener("click", () => openLightbox(msg.attachDataUrl));
-      el.appendChild(img);
+      wrap.appendChild(img);
+
+      const mkAttachBtn = (cls, text, title, fn) => {
+        const b = document.createElement("button");
+        b.className = cls;
+        b.textContent = text;
+        b.title = title;
+        b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+        wrap.appendChild(b);
+      };
+      mkAttachBtn("variation-single-btn", "↻", "Variationer av denna bild",
+                  () => generateVariation(msg.attachDataUrl, msg.imagePrompt || ""));
+      mkAttachBtn("tag-single-btn", "🏷", "Auto-tagga bilden (vision → SD-prompt)",
+                  () => autoTagImage(msg.attachDataUrl, msg.id));
+
+      el.appendChild(wrap);
     }
+
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "content";
+    contentDiv.textContent = msg.content || "";
+    el.appendChild(contentDiv);
+
     if (msg.enPrompt && $("showEnPrompt").checked) {
-      const box = document.createElement("div");
-      box.className = "en-prompt";
-      box.textContent = "EN prompt: " + msg.enPrompt;
-      el.appendChild(box);
+      const en = document.createElement("div");
+      en.className = "en-prompt";
+      en.textContent = "EN: " + msg.enPrompt;
+      el.appendChild(en);
     }
+    if (msg.images && msg.images.length) renderImageGridInto(el, msg);
 
-    // ===== ÄNDRAT: Använd gemensam renderare för bilder =====
-    if (msg.images && msg.images.length || msg.image) {
-      renderImageGridInto(el, msg);
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const mkAction = (label, title, fn) => {
+      const b = document.createElement("button");
+      b.className = "btn tiny";
+      b.textContent = label;
+      b.title = title;
+      b.addEventListener("click", fn);
+      actions.appendChild(b);
+    };
+    mkAction("Kopiera", "Kopiera meddelande", () => {
+      navigator.clipboard.writeText(msg.content).catch(() => {});
+      toast("Kopierad");
+    });
+    if (msg.role === "user") {
+      mkAction("Skicka om", "Skicka om samma meddelande", () => regenerateMessage(msg));
+    } else if (msg.content && msg.content.trim()) {
+      mkAction("Generera bild", "Generera bild från svaret", () => generateFromAnswer(msg));
     }
+    mkAction("Ta bort", "Ta bort meddelande", () => deleteMessage(msg.id));
+    el.appendChild(actions);
 
-    // actions
-    if (msg.role === "assistant") {
-      const actions = document.createElement("div");
-      actions.className = "actions";
-      const b1 = document.createElement("button");
-      b1.className = "btn small";
-      b1.textContent = "Generate image from answer";
-      b1.onclick = () => generateImage(msg.content.slice(0, 900));
-      const b2 = document.createElement("button");
-      b2.className = "btn small";
-      b2.textContent = "Copy";
-      b2.onclick = async () => { await navigator.clipboard.writeText(msg.content || ""); toast("Copied"); };
-      actions.append(b1, b2);
-      el.appendChild(actions);
-    }
     chatEl.appendChild(el);
-    chatEl.scrollTop = chatEl.scrollHeight;
-    updateDeleteButton(msg.id);
   }
+  function renderImageGridInto(el, msg) {
+    const old = el.querySelector(".image-grid");
+    if (old) old.remove();
+    const wrap = document.createElement("div");
+    wrap.className = "image-grid";
 
-  // Radera meddelande
-  function deleteMessage(msgId) {
-    state.messages = state.messages.filter(m => m.id !== msgId);
-    toast("Message deleted");
+    const selected = state.selectedImages;
+    const selectedCount = [...selected].filter(id => msg.images.some(im => im.id === id)).length;
+
+    const delSel = document.createElement("button");
+    delSel.className = "btn small danger delete-selected-btn";
+    delSel.style.display = selectedCount ? "block" : "none";
+    delSel.textContent = "Ta bort valda (" + selectedCount + ")";
+    delSel.addEventListener("click", () => {
+      msg.images = msg.images.filter(im => !selected.has(im.id));
+      selected.clear();
+      renderImageGridInto(el, msg);
+      saveLocal();
+      toast("Bilder borttagna");
+    });
+    wrap.appendChild(delSel);
+
+    for (const imgData of msg.images) {
+      const fig = document.createElement("figure");
+
+      const imgEl = document.createElement("img");
+      imgEl.src = imgData.url;
+      imgEl.loading = "lazy";
+      // Bläddra bland bilderna i samma meddelande med ←/→.
+      imgEl.addEventListener("click", () => openLightbox(imgData.url, msg.images.map(im => im.url)));
+      fig.appendChild(imgEl);
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "image-checkbox";
+      cb.checked = selected.has(imgData.id);
+      cb.addEventListener("click", (e) => e.stopPropagation());
+      cb.addEventListener("change", () => {
+        if (selected.has(imgData.id)) selected.delete(imgData.id);
+        else selected.add(imgData.id);
+        renderImageGridInto(el, msg);
+      });
+      fig.appendChild(cb);
+
+      const delSingleBtn = document.createElement("button");
+      delSingleBtn.className = "delete-single-btn";
+      delSingleBtn.textContent = "×";
+      delSingleBtn.title = "Ta bort bilden";
+      delSingleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        msg.images = msg.images.filter(im => im.id !== imgData.id);
+        selected.delete(imgData.id);
+        renderImageGridInto(el, msg);
+        saveLocal();
+        toast("Bild borttagen");
+      });
+      fig.appendChild(delSingleBtn);
+
+      const dlBtn = document.createElement("button");
+      dlBtn.className = "download-single-btn";
+      dlBtn.textContent = "⬇";
+      dlBtn.title = "Spara bilden";
+      dlBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const a = document.createElement("a");
+        a.href = imgData.url;
+        a.download = "nsfw_studio_" + (imgData.seed ?? "img") + ".png";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+      fig.appendChild(dlBtn);
+
+      const varBtn = document.createElement("button");
+      varBtn.className = "variation-single-btn";
+      varBtn.textContent = "↻";
+      varBtn.title = "Variationer av denna bild";
+      varBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        generateVariation(imgData.url, msg.imagePrompt || "");
+      });
+      fig.appendChild(varBtn);
+
+      const tagBtn = document.createElement("button");
+      tagBtn.className = "tag-single-btn";
+      tagBtn.textContent = "🏷";
+      tagBtn.title = "Auto-tagga bilden (vision → SD-prompt)";
+      tagBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        autoTagImage(imgData.url, msg.id);
+      });
+      fig.appendChild(tagBtn);
+
+      const cap = document.createElement("figcaption");
+      cap.textContent = imgData.seed !== undefined && imgData.seed !== null ? "Seed: " + imgData.seed : "";
+      fig.appendChild(cap);
+
+      wrap.appendChild(fig);
+    }
+    el.appendChild(wrap);
+  }
+  function renderAllMessages() {
+    if (!state.messages.length) {
+      state.messages = [{ id: uid(), role: "assistant", ts: Date.now(), content: langStrings[currentLang].galleryEmpty ? (currentLang === "sv" ? "Välkommen till NSFW Studio. Skriv ett meddelande, bifoga en bild eller använd /image för att generera." : "Welcome to NSFW Studio. Type a message, attach an image or use /image to generate.") : "Welcome" }];
+    }
+    chatEl.innerHTML = "";
+    for (const msg of state.messages) appendMessageEl(msg);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+  function deleteMessage(id) {
+    state.messages = state.messages.filter(m => m.id !== id);
     saveLocal();
     renderAllMessages();
+    toast("Meddelande borttaget");
   }
-
-  // ===== ÄNDRAT: Regenerera med stöd för bifogad bild =====
-  function regenerateMessage(msgId) {
-    const msg = state.messages.find(m => m.id === msgId);
-    if (!msg || msg.role !== "user") return;
+  function regenerateMessage(msg) {
+    if (msg.role !== "user") return;
     if (msg.attachDataUrl) {
       state.pendingImages.push({
         id: uid(),
         dataUrl: msg.attachDataUrl,
+        attachThumb: msg.attachThumb,
         b64: dataUrlToB64(msg.attachDataUrl),
         mime: "image/jpeg",
-        name: "attached.jpg"
+        name: "attached.jpg",
       });
       renderAttachBar();
-      triggerSend(msg.content || "");
-    } else {
-      triggerSend(msg.content);
     }
+    triggerSend(msg.content);
+  }
+  function generateFromAnswer(msg) {
+    const p = String(msg.content || "").slice(0, 900);
+    generateImage(p);
   }
 
-  // triggerSend – fixad async
+  // ===== BIFOGADE BILDER =====
+  function renderAttachBar() {
+    attachBar.innerHTML = "";
+    for (const img of state.pendingImages) {
+      const d = document.createElement("div");
+      d.className = "thumb";
+      d.innerHTML = `<img src="${img.dataUrl}" alt=""><button class="thumb-remove" title="Ta bort">×</button>`;
+      d.querySelector(".thumb-remove").onclick = () => {
+        state.pendingImages = state.pendingImages.filter(x => x.id !== img.id);
+        renderAttachBar();
+      };
+      attachBar.appendChild(d);
+    }
+  }
+  function attachAvatarForAnalysis(role) {
+    const dataUrl = role === "user" ? state.avatars.user : state.avatars.ai;
+    if (!dataUrl) return toast("Sätt en profilbild först");
+    state.pendingImages.push({
+      id: uid(),
+      dataUrl,
+      b64: dataUrlToB64(dataUrl),
+      mime: "image/jpeg",
+      name: "avatar.jpg",
+    });
+    renderAttachBar();
+    toast("Avatar bifogad för analys — tryck Skicka");
+  }
+  async function addFiles(fileList) {
+    for (const file of fileList) {
+      if (!file.type.startsWith("image/")) continue;
+      try {
+        const dataUrl = await blobToDataUrl(file);
+        const compressed = await compressImage(dataUrl, 1280, 0.88);
+        const attachThumb = await compressImage(compressed, 512, 0.72);
+        state.pendingImages.push({
+          id: uid(),
+          dataUrl: compressed,
+          attachThumb,
+          b64: dataUrlToB64(compressed),
+          mime: file.type,
+          name: file.name || "photo.jpg",
+        });
+      } catch (e) {}
+    }
+    renderAttachBar();
+  }
+
+  // ===== SKICKA / KOMMANDON =====
+  function setBusy(b) {
+    state.busy = b;
+    progressEl.style.display = b ? "block" : "none";
+    $("btnStop").disabled = !b;
+    if (!b) setChatLock(false);
+  }
+  function setChatLock(b) {
+    state.chatLock = b;
+    $("btnSend").disabled = b;
+    $("btnImage").disabled = b;
+    $("btnAttach").disabled = b;
+  }
   async function triggerSend(textOverride = null) {
     const text = textOverride !== null ? textOverride : $("prompt").value.trim();
     const pending = [...state.pendingImages];
     if ((!text && !pending.length) || state.chatLock) return;
 
-    if (textOverride === null) {
-      $("prompt").value = "";
-      autoGrow();
-    }
-
-    if (text) state.lastUserMessage = text;
-
     if (text === "/clear") {
-      state.messages = []; state.pendingImages = []; renderAttachBar();
-      saveLocal(); renderAllMessages(); toast("Chat cleared"); return;
+      state.messages = [];
+      state.pendingImages = [];
+      renderAttachBar();
+      saveLocal();
+      renderAllMessages();
+      toast("Chatten rensad");
+      return;
     }
     if (text.startsWith("/system ")) {
-      $("systemPrompt").value = text.slice(8); saveLocal();
-      addMessage("assistant", "System prompt updated."); return;
+      $("systemPrompt").value = text.slice(8);
+      saveLocal();
+      addMessage("assistant", "Systemprompt uppdaterad.");
+      return;
     }
-
-    if (text.startsWith("/image ") || text.startsWith("/img ")) {
-      let p = text.replace(/^\/img(?:age)?\s+/, "");
-      const skipTranslation = p.startsWith("raw ");
-      if (skipTranslation) p = p.slice(4).trim();
-      else if (p.startsWith("tr ")) {
-        p = p.slice(3).trim();
+    if (text.startsWith("/vary") || text.startsWith("/variera") || text.startsWith("/variation")) {
+      const p = text.replace(/^\/(vary|variera|variation)\s*/, "").trim();
+      const attached = state.pendingImages[0];
+      state.pendingImages = [];
+      renderAttachBar();
+      if (attached) { await generateVariation(attached.dataUrl, p); return; }
+      let lastUrl = null;
+      for (let i = state.messages.length - 1; i >= 0 && !lastUrl; i--) {
+        const m = state.messages[i];
+        if (m.images && m.images.length) lastUrl = m.images[m.images.length - 1].url;
       }
-      state.pendingImages = []; renderAttachBar();
-      await generateImage(p.slice(0, 350), skipTranslation);
+      if (lastUrl) { await generateVariation(lastUrl, p); return; }
+      toast("Bifoga en bild eller generera en först (/vary <prompt>)", 3500);
       return;
     }
     if (text.startsWith("/image") || text.startsWith("/img")) {
-      if (state.lastImagePrompt) {
-        state.pendingImages = []; renderAttachBar();
-        await generateImage(state.lastImagePrompt);
-        return;
+      const stripped = text.replace(/^\/(img|image)\s*/, "");
+      let p = stripped.trim();
+      let skipTranslation = false;
+      if (p.startsWith("raw ")) {
+        skipTranslation = true;
+        p = p.slice(4).trim();
+      } else if (p.startsWith("tr ")) {
+        p = p.slice(3).trim();
       }
-      toast("Add a prompt after /image, e.g. /image raw a beautiful girl");
-      return;
-    }
-
-    if (pending.length) {
-      const b64s = pending.map(p => p.b64);
-      const preview = pending[0].dataUrl;
       state.pendingImages = [];
       renderAttachBar();
-      await chat(text, b64s, preview);
+      const prompt = p || state.lastImagePrompt;
+      if (!prompt) { toast("Skriv en bildprompt eller använd /image <prompt>", 3500); return; }
+      await generateImage(prompt.slice(0, 350), skipTranslation);
       return;
     }
-    await chat(text);
-  }
 
-  // toggle bilder
-  function toggleImageSelection(imageId, checked, msgId) {
-    if (checked) state.selectedImages.add(imageId);
-    else state.selectedImages.delete(imageId);
-    const cb = document.querySelector(`[data-image-id="${imageId}"]`);
-    if (cb) cb.checked = state.selectedImages.has(imageId);
-    updateDeleteButton(msgId);
-  }
-
-  function updateDeleteButton(msgId) {
-    const el = chatEl.querySelector(`[data-id="${msgId}"]`);
-    if (!el) return;
-    const deleteBtn = el.querySelector(".delete-selected-btn");
-    if (!deleteBtn) return;
-    if (state.selectedImages.size > 0) {
-      deleteBtn.style.display = "block";
-      deleteBtn.disabled = false;
-    } else {
-      deleteBtn.style.display = "none";
+    if (!text && pending.length) {
+      // bara bild → vision-analys
     }
+    const b64s = pending.map(p => p.b64);
+    const preview = pending[0]?.dataUrl || null;
+    const attachThumb = pending[0]?.attachThumb || null;
+    state.pendingImages = [];
+    renderAttachBar();
+    await chat(text, b64s, preview, attachThumb);
   }
 
-  // ===== ÄNDRAT: Använder renderImageGridInto för korrekt DOM-uppdatering =====
-  function deleteSelectedImages(msgId) {
-    if (state.selectedImages.size === 0) return;
-    if (!confirm(`Delete ${state.selectedImages.size} selected image(s)?`)) return;
+  // ===== CHAT =====
+  async function chat(userText, imagesB64 = [], attachDataUrl = null, attachThumb = null) {
+    const model = imagesB64.length ? ($("visionSelect").value || $("modelSelect").value) : $("modelSelect").value;
+    if (!model) { toast("Välj en modell"); return; }
 
-    const msg = state.messages.find(m => m.id === msgId);
-    if (!msg) return;
+    const display = userText || langStrings[currentLang].you + " bifogade en bild";
+    const userMsg = addMessage("user", display, attachDataUrl ? { attachDataUrl, attachThumb } : {});
+    const bot = addMessage("assistant", "");
+    setBusy(true);
+    setChatLock(true);
+    state.abort = new AbortController();
 
-    // Migrera gammal data
-    if (!msg.images && msg.image) {
-      msg.images = [{ url: msg.image }];
-      msg.image = null;
-    }
-    if (!msg.images) return;
-
-    const selected = new Set(state.selectedImages);
-    msg.images = msg.images.filter((img, i) => {
-      const imageId = `${msgId}_img_${i}`;
-      return !selected.has(imageId);
+    const history = [];
+    history.push({
+      role: "system",
+      content: "IMPORTANT: Do not think step by step. Respond directly without reasoning.\n\n" + $("systemPrompt").value,
     });
-    if (msg.images.length === 0) {
-      msg.image = null;
-      msg.images = [];
-    }
-    state.selectedImages.clear();
-
-    const el = chatEl.querySelector(`[data-id="${msgId}"]`);
-    if (el) renderImageGridInto(el, msg);
-    saveLocal();
-  }
-
-  // ===== ÄNDRAT: Använder renderImageGridInto för korrekt DOM-uppdatering =====
-  function deleteSingleImage(msgId, imageIndex) {
-    const msg = state.messages.find(m => m.id === msgId);
-    if (!msg) return;
-
-    // Migrera gammal data
-    if (!msg.images && msg.image) {
-      msg.images = [{ url: msg.image }];
-      msg.image = null;
-    }
-    if (!msg.images) return;
-
-    const imageId = `${msgId}_img_${imageIndex}`;
-    msg.images.splice(imageIndex, 1);
-    if (msg.images.length === 0) {
-      msg.image = null;
-      msg.images = [];
-    }
-    state.selectedImages.delete(imageId);
-
-    const el = chatEl.querySelector(`[data-id="${msgId}"]`);
-    if (el) renderImageGridInto(el, msg);
-    saveLocal();
-  }
-
-  function renderAllMessages() {
-    chatEl.innerHTML = "";
-    state.selectedImages.clear();
-    if (!state.messages.length) {
-      const lang = currentLang === "sv" ? "sv" : "en";
-      const welcomeMsg = lang === "sv"
-        ? "Hej. 18-20 lokal studio.\n\n• Chat med ctx 131072\n• /image något → DIREKT till ComfyUI (obs: engelsk prompt)\n• /image tr något → översätt först, sen ComfyUI\n• Upp till 4 bilder per /image\n• Foto-knappen / klistra in / dra-släpp → analyserar din bild med vision-modell\n• Tryck på × för att ta bort en bild, använd kryssrutor för massradering\n• 🗑️ radera meddelande, ↻ skicka om användarmeddelanden\n• Sätt profilbilder för dig och AI:n i sidopanelen\n\nTips: pull en vision-modell, t.ex.\n  ollama pull llava\n  ollama pull llama3.2-vision\n  ollama pull qwen2.5vl"
-        : "Hi. 18-20 local studio.\n\n• Chat with ctx 131072\n• /image something → DIRECT to ComfyUI (note: english prompt)\n• /image tr something → translate first, then ComfyUI\n• Up to 4 images per /image\n• Photo button / paste / drag-and-drop → analyze with vision model\n• Press × to remove an image, use checkboxes for bulk deletion\n• 🗑️ delete message, ↻ resend user message\n• Set profile pictures for you and AI in sidebar\n\nTip: pull a vision model, e.g.\n  ollama pull llava\n  ollama pull llama3.2-vision\n  ollama pull qwen2.5vl";
-      state.messages = [{
-        id: uid(), role: "assistant", ts: Date.now(),
-        content: welcomeMsg
-      }];
-    }
-    state.messages.forEach(appendMessageEl);
-  }
-
-  function updateMessageEl(id, content, extras = {}) {
-    const el = chatEl.querySelector(`[data-id="${id}"]`);
-    const msg = state.messages.find(m => m.id === id);
-    if (msg) {
-      if (content != null) msg.content = content;
-      Object.assign(msg, extras);
-    }
-    if (!el) return;
-    if (content != null) {
-      const body = el.querySelector(".msg-body");
-      if (body) body.textContent = content;
-    }
-    if (extras.enPrompt && $("showEnPrompt").checked) {
-      let box = el.querySelector(".en-prompt");
-      if (!box) {
-        box = document.createElement("div");
-        box.className = "en-prompt";
-        el.appendChild(box);
+    for (const m of state.messages) {
+      if (m.id === userMsg.id || m.id === bot.id) continue;
+      if (!m.content && !m.attachDataUrl) continue;
+      if (m.role === "user" && m.attachDataUrl) {
+        history.push({ role: "user", content: (m.content || "") + "\n[user attached an image earlier]" });
+      } else if (m.content) {
+        history.push({ role: m.role, content: m.content });
       }
-      box.textContent = "EN prompt: " + extras.enPrompt;
     }
-    // ===== NYTT: Rendera bilder direkt när de läggs till =====
-    if (extras.images && msg) {
-      renderImageGridInto(el, msg);
+    while (history.length && history[history.length - 1].role === "user") history.pop();
+
+    const userChat = { role: "user", content: userText || "Analyze the image I sent you. Describe what you see in detail." };
+    if (imagesB64.length) userChat.images = imagesB64;
+    history.push(userChat);
+
+    const maxHistory = 20;
+    if (history.length > maxHistory + 1) {
+      const systems = history.filter(m => m.role === "system");
+      const rest = history.filter(m => m.role !== "system").slice(-maxHistory);
+      history.length = 0;
+      history.push(...systems, ...rest);
+    }
+
+    try {
+      const full = await ollamaChat({
+        model,
+        messages: history,
+        stream: $("streamToggle").checked,
+        onToken: (partial) => updateMessageEl(bot.id, partial),
+      });
+      updateMessageEl(bot.id, full || "(empty response)");
+      saveLocal();
+    } catch (e) {
+      const suffix = state.timedOut ? "[timeout after 5 minutes]" : "[aborted]";
+      state.timedOut = false;
+      const msg = e.name === "AbortError"
+        ? (bot.content || "") + "\n\n" + suffix
+        : "Error: " + e.message;
+      updateMessageEl(bot.id, msg);
+    }
+    setChatLock(false);
+    setBusy(false);
+    state.abort = null;
+    saveLocal();
+  }
+
+  // ===== BILDGENERERING (ComfyUI) =====
+  // ===== FIX: Kö för bildgenerering — man kan trycka flera gånger i rad =====
+  let imageQueue = [];
+  let imageQueueRunning = false;
+
+  async function generateImage(promptText, skipTranslation = false) {
+    if (state.chatLock) { toast("Vänta tills chatten svarat"); return; }
+    // Alltid köa — även om busy fastnat startar kön ett jobb som återställer den.
+    imageQueue.push({ promptText, skipTranslation });
+    if (imageQueueRunning) {
+      toast("Köad — " + imageQueue.length + " väntar…", 2000);
+      return;
+    }
+    imageQueueRunning = true;
+    try {
+      while (imageQueue.length) {
+        const job = imageQueue.shift();
+        await runImageJob(job.promptText, job.skipTranslation);
+      }
+    } finally {
+      imageQueueRunning = false;
     }
   }
 
-  function openLightbox(src) {
-    $("lightboxImg").src = src;
-    $("lightbox").classList.add("open");
-  }
-  $("lightbox").onclick = () => $("lightbox").classList.remove("open");
+  async function runImageJob(promptText, skipTranslation) {
+    const comfyUrl = normalizeBaseUrl($("comfyUrl").value);
+    const ckpt = $("ckptSelect").value;
+    if (!ckpt) { toast("No checkpoint — test ComfyUI"); return; }
+    if (!promptText?.trim()) { toast("Empty image prompt"); return; }
 
-  // ===== GALLERI =====
-  async function addToGallery(url, prompt) {
-    state.gallery.unshift({ url, prompt, ts: Date.now() });
-    if (state.gallery.length > 50) state.gallery.length = 50;
-    renderGallery();
-    await saveGalleryToDB(state.gallery);
-  }
+    setBusy(true);
+    state.abort = new AbortController();
+    const stopSignal = state.abort.signal;
 
-  function renderGallery() {
-    galleryEl.innerHTML = "";
-    galleryEmpty.style.display = state.gallery.length ? "none" : "block";
-    for (const g of state.gallery.slice(0, 40)) {
-      const fig = document.createElement("figure");
-      const img = document.createElement("img");
-      img.src = g.url;
-      img.loading = "lazy";
-      const cap = document.createElement("figcaption");
-      cap.textContent = g.prompt;
-      fig.append(img, cap);
-      fig.onclick = () => openLightbox(g.url);
-      galleryEl.appendChild(fig);
+    let finalPrompt = String(PromptTemplateBuild(promptText)).slice(0, 350);
+    const num = Math.min(Math.max(parseInt($("numImages").value) || 1, 1), 4);
+
+    const note = addMessage("assistant", "Preparing " + num + " image(s)…\nOriginal: " + finalPrompt);
+    let en = finalPrompt;
+
+    try {
+      if ($("translatePrompt").checked && !skipTranslation) {
+        updateMessageEl(note.id, "Translating to English SD prompt…\nOriginal: " + finalPrompt);
+        en = await translateToEnglish(finalPrompt);
+        if (stopSignal.aborted) throw new DOMException("Aborted", "AbortError");
+      } else if (skipTranslation) {
+        updateMessageEl(note.id, "Sending directly to ComfyUI (no translation)…\nPrompt: " + finalPrompt);
+      }
+
+      state.lastImagePrompt = promptText.trim();
+      const stylePos = $("stylePos").value.trim();
+      const positive = stylePos ? en + ", " + stylePos : en;
+      const negative = $("styleNeg").value.trim();
+
+      const baseSeed = parseInt($("seed").value);
+      const seeds = [];
+      for (let i = 0; i < num; i++) {
+        if (!Number.isFinite(baseSeed) || baseSeed < 0) seeds.push(Math.floor(Math.random() * 1e15));
+        else seeds.push(baseSeed + i);
+      }
+
+      const msg = state.messages.find(m => m.id === note.id);
+      if (msg) { msg.enPrompt = en; msg.imagePrompt = finalPrompt; msg.images = []; }
+      updateMessageEl(note.id, "Sending " + num + " prompt(s) to ComfyUI…", { enPrompt: en, images: [] });
+
+      await Promise.allSettled(seeds.map(async (seed, idx) => {
+        try {
+          const workflow = buildWorkflow(positive, negative, seed);
+          const result = await generateSingleImage(comfyUrl, { seed, positive, negative, workflow }, stopSignal);
+          const msgNow = state.messages.find(m => m.id === note.id);
+          if (msgNow) msgNow.images.push({ url: result.url, seed: result.seed, thumb: result.thumb });
+          saveMessagesToDB().catch(console.error);
+          const m2 = state.messages.find(m => m.id === note.id);
+          updateMessageEl(note.id, m2.images.length + " of " + num + " image(s) done…", { images: m2.images.slice() });
+          await addToGallery(result.url, en + " (seed " + result.seed + ")");
+        } catch (e) {
+          if (e.name === "AbortError") throw e;
+          toast("Image " + (idx + 1) + " failed: " + e.message, 4000);
+          const m3 = state.messages.find(m => m.id === note.id);
+          if (m3) updateMessageEl(note.id, m3.images.length + " of " + num + " image(s) done…\nImage " + (idx + 1) + " failed: " + e.message, { images: m3.images.slice() });
+        }
+      }));
+      if (stopSignal.aborted) throw new DOMException("Aborted", "AbortError");
+
+      const m4 = state.messages.find(m => m.id === note.id);
+      const finalText = m4 && m4.images.length
+        ? m4.images.length + " image(s) done.\nOriginal: " + finalPrompt
+        : "No images could be generated.\nOriginal: " + finalPrompt;
+      updateMessageEl(note.id, finalText, { images: m4 ? m4.images.slice() : [] });
+    } catch (e) {
+      if (e.name === "AbortError") {
+        const m = state.messages.find(x => x.id === note.id);
+        if (m) updateMessageEl(note.id, (m.content || "") + "\n[aborted]");
+      } else {
+        updateMessageEl(note.id, "Image error: " + e.message);
+        toast(e.message, 4000);
+      }
+    } finally {
+      setBusy(false);
+      state.abort = null;
+      saveLocal();
     }
   }
-
-  async function reloadGalleryFromDB() {
-    const items = await loadGalleryFromDB();
-    if (items.length) {
-      state.gallery = items;
-      renderGallery();
-    }
-  }
-
-  function pickVisionModel() {
-    const v = $("visionSelect").value;
-    if (v) return v;
-    const chatModel = $("modelSelect").value;
-    const opts = [...$("visionSelect").options].map(o => o.value).filter(Boolean);
-    const hit = opts.find(n => VISION_HINT.test(n));
-    return hit || chatModel;
-  }
-
-  function buildPromptFromTemplate(userText) {
-    if (!$("usePromptTemplate").checked) {
-      return (userText || "").trim().slice(0, 350);
-    }
+  function PromptTemplateBuild(userText) {
+    if (!$("usePromptTemplate").checked) return (userText || "").trim().slice(0, 350);
     const parts = [
       $("ddQuality").value,
       $("ddSubject").value,
@@ -2186,190 +2379,9 @@ Answer in the user's language.`
       $("ddExplicit").value,
       ($("ddCustomTags").value || "").trim(),
     ];
-    if (userText && userText.trim()) {
-      parts.push(userText.trim());
-    }
-    // Kategorier som satts till "— Tom —" (tom sträng) bidrar inget.
+    if (userText && userText.trim()) parts.push(userText.trim());
     return parts.filter(p => p && p.trim()).join(", ").slice(0, 350);
   }
-
-  // ---------- Ollama helpers ----------
-  async function ollamaChat({ model, messages, stream = false, images }) {
-    const ollamaUrl = normalizeBaseUrl($("ollamaUrl").value);
-    const payload = {
-      model,
-      messages,
-      stream,
-      options: {
-        temperature: 1.0,
-        top_p: 0.95,
-        top_k: 20,
-        min_p: 0.0,
-        presence_penalty: 1.5,
-        repetition_penalty: 1.0,
-        num_ctx: getCtx(),
-      }
-    };
-    // 5 minuters hård gräns — lokala modeller kan vara långsamma.
-    state.timedOut = false;
-    const timeoutId = setTimeout(() => {
-      state.timedOut = true;
-      state.abort?.abort();
-    }, 300000);
-    let res;
-    try {
-      res = await fetch(`${ollamaUrl}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: state.abort?.signal,
-      });
-    } catch (e) {
-      clearTimeout(timeoutId);
-      throw e;
-    }
-    if (!res.ok) { clearTimeout(timeoutId); throw new Error(`Ollama ${res.status}: ${await res.text()}`); }
-    if (!stream) {
-      clearTimeout(timeoutId);
-      const j = await res.json();
-      return j?.message?.content || "";
-    }
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let full = "", buf = "";
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split("\n");
-      buf = lines.pop() || "";
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const j = JSON.parse(line);
-          const piece = j?.message?.content || "";
-          if (piece) {
-            full += piece;
-            if (images?.onToken) images.onToken(full);
-          }
-        } catch {}
-      }
-    }
-    clearTimeout(timeoutId);
-    return full;
-  }
-
-  function looksLikeEnglish(text) {
-    const t = text.trim();
-    const swe = (t.match(/[åäöÅÄÖ]/g) || []).length;
-    const letters = (t.match(/[A-Za-zÅÄÖåäö]/g) || []).length;
-    if (!letters) return false;
-    if (swe / letters > 0.02) return false;
-    if (/\b(och|jag|det|att|en|ett|med|på|för|som|är|den|var|till|de)\b/i.test(t) && swe > 0) return false;
-    return true;
-  }
-
-  async function translateToEnglishSDPrompt(rawText) {
-    if (!$("translatePrompt").checked) return rawText.trim().slice(0, 350);
-    const text = rawText.trim().slice(0, 350);
-    if (!text) return text;
-    if (looksLikeEnglish(text)) return text;
-    const model = $("modelSelect").value;
-    if (!model) return text;
-    const sys = `Convert the user's image request into ONE single English Stable Diffusion / ComfyUI prompt.
-Rules:
-- Output ONLY the English prompt, no quotes, no explanation, no markdown.
-- Keep it visual and concrete: subject, age (adult 18-20), appearance, clothing, pose, setting, lighting, camera, style.
-- All subjects are clearly adult 18+. Prefer young adult look.
-- NSFW allowed when asked. Use explicit, visual tags.
-- Max ~120 words. Comma-separated tags/phrases ok.`;
-    try {
-      const out = await ollamaChat({
-        model,
-        stream: false,
-        messages: [
-          { role: "system", content: sys },
-          { role: "user", content: text }
-        ]
-      });
-      const result = (out || text).replace(/^["'\s]+|["'\s]+$/g, "").trim().slice(0, 350);
-      return result || text;
-    } catch (e) {
-      console.warn("translate failed", e);
-      return text;
-    }
-  }
-
-  async function chat(userText, imagesB64 = [], attachDataUrl = null) {
-    const model = imagesB64.length ? pickVisionModel() : $("modelSelect").value;
-    if (!model) { toast("Select Ollama model"); return; }
-
-    const display = userText || (imagesB64.length ? "(image attached — analyze)" : "");
-    addMessage("user", display, attachDataUrl ? { attachDataUrl } : {});
-    const bot = addMessage("assistant", "");
-    setBusy(true);
-    setChatLock(true);
-    state.abort = new AbortController();
-
-    const history = [];
-    const sys = $("systemPrompt").value.trim();
-    const noThinkInstruction = "IMPORTANT: Do not think step by step. Respond directly without reasoning.";
-    const combinedSys = noThinkInstruction + "\n\n" + sys;
-    if (combinedSys.trim()) history.push({ role: "system", content: combinedSys });
-
-    for (const m of state.messages) {
-      if (m.id === bot.id) continue;
-      if (m.role === "user" || m.role === "assistant") {
-        if (!m.content && !m.attachDataUrl) continue;
-        if (m.role === "user" && m.attachDataUrl && m.id !== state.messages[state.messages.length - 2]?.id) {
-          history.push({ role: "user", content: (m.content || "") + "\n[user attached an image earlier]" });
-        } else if (m.content) {
-          history.push({ role: m.role, content: m.content });
-        }
-      }
-    }
-
-    while (history.length && history[history.length - 1].role === "user") history.pop();
-    const userMsg = {
-      role: "user",
-      content: userText || "Analyze the image I sent. I am a young adult aged 18-20. Describe what you see and build further in our tone.",
-    };
-    if (imagesB64.length) userMsg.images = imagesB64;
-    history.push(userMsg);
-
-    // ===== NYTT: Begränsa historiken för att spara tokens och öka hastighet =====
-    const MAX_HISTORY_ITEMS = 20;
-    const trimmedHistory = history.length > MAX_HISTORY_ITEMS + 1
-      ? [...history.filter(m => m.role === "system"), ...history.filter(m => m.role !== "system").slice(-MAX_HISTORY_ITEMS)]
-      : history;
-
-    try {
-      const full = await ollamaChat({
-        model,
-        messages: trimmedHistory,
-        stream: $("streamToggle").checked,
-        images: {
-          onToken: (t) => updateMessageEl(bot.id, t)
-        }
-      });
-      updateMessageEl(bot.id, full || "(empty response)");
-      saveLocal();
-    } catch (e) {
-      const suffix = state.timedOut ? "[timeout after 5 minutes]" : "[aborted]";
-      state.timedOut = false;
-      const msg = e.name === "AbortError" ? ((bot.content || "") + "\n\n" + suffix) : `Error: ${e.message}`;
-      updateMessageEl(bot.id, msg);
-      if (e.name !== "AbortError") {
-        if (/image|vision|does not support/i.test(e.message)) {
-          toast("Model does not support images — select vision model");
-        } else toast(e.message);
-      }
-    } finally {
-      setBusy(false);
-      state.abort = null;
-    }
-  }
-
   function buildWorkflow(positive, negative, seed) {
     return {
       "3": {
@@ -2377,121 +2389,27 @@ Rules:
         inputs: {
           seed, steps: +$("steps").value || 28, cfg: +$("cfg").value || 5.5,
           sampler_name: $("sampler").value, scheduler: $("scheduler").value, denoise: 1,
-          model: ["4", 0], positive: ["6", 0], negative: ["7", 0], latent_image: ["5", 0]
-        }
+          model: ["4", 0], positive: ["6", 0], negative: ["7", 0], latent_image: ["5", 0],
+        },
       },
       "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: $("ckptSelect").value } },
       "5": { class_type: "EmptyLatentImage", inputs: { width: +$("imgW").value || 768, height: +$("imgH").value || 1024, batch_size: 1 } },
       "6": { class_type: "CLIPTextEncode", inputs: { text: positive, clip: ["4", 1] } },
       "7": { class_type: "CLIPTextEncode", inputs: { text: negative, clip: ["4", 1] } },
       "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] } },
-      "9": { class_type: "SaveImage", inputs: { filename_prefix: "NSFW_Studio", images: ["8", 0] } }
+      "9": { class_type: "SaveImage", inputs: { filename_prefix: "NSFW_Studio", images: ["8", 0] } },
     };
   }
-
-  async function generateImage(promptText, skipTranslation = false) {
-    const comfyUrl = normalizeBaseUrl($("comfyUrl").value);
-    const ckpt = $("ckptSelect").value;
-    if (!ckpt) { toast("No checkpoint — test ComfyUI"); return; }
-    if (!promptText?.trim()) { toast("Empty image prompt"); return; }
-
-    setBusy(true);
-    state.abort = new AbortController();
-
-    const finalPrompt = buildPromptFromTemplate(promptText).slice(0, 350);
-    const num = Math.min(Math.max(parseInt($("numImages").value) || 1, 1), 4);
-
-    const note = addMessage("assistant", `Preparing ${num} image(s)…\nOriginal: ${finalPrompt}`);
-    let en = finalPrompt.trim();
-
-    try {
-      if ($("translatePrompt").checked && !skipTranslation) {
-        updateMessageEl(note.id, `Translating to English SD prompt…\nOriginal: ${finalPrompt}`);
-        en = await translateToEnglishSDPrompt(finalPrompt);
-        en = en.slice(0, 350);
-      } else if (skipTranslation) {
-        updateMessageEl(note.id, `Sending directly to ComfyUI (no translation)…\nPrompt: ${finalPrompt}`);
-      } else {
-        en = finalPrompt;
-      }
-
-      state.lastImagePrompt = promptText.trim();
-      const stylePos = $("stylePos").value.trim();
-      const positive = stylePos ? `${en}, ${stylePos}` : en;
-      const negative = $("styleNeg").value.trim();
-
-      // ===== ÄNDRAT: Fixa seed när parseInt ger NaN =====
-      const baseSeed = parseInt($("seed").value);
-      const seeds = [];
-      for (let i = 0; i < num; i++) {
-        if (!Number.isFinite(baseSeed) || baseSeed < 0) seeds.push(Math.floor(Math.random() * 1e15));
-        else seeds.push(baseSeed + i);
-      }
-
-      const msg = state.messages.find(m => m.id === note.id);
-      if (!msg) return;
-      msg.enPrompt = en;
-      msg.imagePrompt = finalPrompt;
-      msg.images = [];
-
-      updateMessageEl(note.id, `Sending ${num} prompt(s) to ComfyUI…`, { enPrompt: en, images: [] });
-
-      // Skicka in alla bilder i ComfyUI-kön direkt och polla sedan parallellt —
-      // annars tar N bilder N gånger så lång tid och ser ut som att det hängt.
-      await Promise.allSettled(seeds.map(async (seed, idx) => {
-        try {
-          const result = await generateSingleImage(comfyUrl, { seed, positive, negative, workflow: buildWorkflow(positive, negative, seed) }, state.abort.signal);
-          msg.images.push({ url: result.url, seed: result.seed });
-          saveMessagesToDB().catch(console.error);
-          updateMessageEl(note.id, `${msg.images.length} of ${num} image(s) done…`, { images: msg.images.slice() });
-          await addToGallery(result.url, `${en} (seed ${result.seed})`);
-        } catch (e) {
-          if (e.name === "AbortError") throw e;
-          toast(`Image ${idx+1} failed: ${e.message}`, 4000);
-          // Spara felet i chatten så det inte försvinner med toasten.
-          updateMessageEl(note.id, `${msg.images.length} of ${num} image(s) done…\nImage ${idx+1} failed: ${e.message}`, { images: msg.images.slice() });
-        }
-      }));
-      if (state.abort?.signal.aborted) throw new DOMException("Aborted", "AbortError");
-
-      const finalText = msg.images.length
-        ? `${msg.images.length} image(s) done.\nOriginal: ${finalPrompt}`
-        : `No images could be generated.\nOriginal: ${finalPrompt}`;
-      updateMessageEl(note.id, finalText, { images: msg.images.slice() });
-      saveLocal();
-    } catch (e) {
-      if (e.name === "AbortError") {
-        updateMessageEl(note.id, (note.content || "") + (state.timedOut ? "\n[timeout after 5 minutes]" : "\n[aborted]"));
-        state.timedOut = false;
-      }
-      else {
-        updateMessageEl(note.id, `Image error: ${e.message}`, { enPrompt: en });
-        toast(e.message, 4000);
-      }
-    } finally {
-      setBusy(false);
-      state.abort = null;
-    }
-  }
-
-  // ===== ÄNDRAT: Komprimerar bilden + fallback för crypto.randomUUID =====
   async function generateSingleImage(comfyUrl, promptData, signal) {
     const { seed, positive, negative, workflow } = promptData;
-    const clientId = crypto.randomUUID
-      ? crypto.randomUUID()
-      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-          const r = Math.random() * 16 | 0;
-          const v = c === 'x' ? r : (r & 0x3 | 0x8);
-          return v.toString(16);
-        });
-    const res = await fetch(`${comfyUrl}/prompt`, {
+    const clientId = crypto.randomUUID ? crypto.randomUUID() : uid();
+    const res = await fetch(comfyUrl + "/prompt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: workflow, client_id: clientId }),
       signal,
     });
     if (!res.ok) {
-      // Plocka ut det riktiga felet (t.ex. "Value not in list: lora_name: 'x'") ur node_errors.
       let detail = "";
       try { detail = await res.text(); } catch {}
       try {
@@ -2508,66 +2426,299 @@ Rules:
           detail = j.error.message + (j.error.details ? " — " + j.error.details : "");
         }
       } catch {}
-      throw new Error(`ComfyUI: ${String(detail).slice(0, 600)}`);
+      throw new Error("ComfyUI: " + String(detail).slice(0, 600));
     }
-    const pj = await res.json();
-    const promptId = pj.prompt_id;
-    if (!promptId) throw new Error("No prompt_id");
+    const j = await res.json();
+    const promptId = j.prompt_id;
+    if (!promptId) throw new Error("No prompt_id from ComfyUI");
 
     const start = Date.now();
     let imageInfo = null;
     while (Date.now() - start < 300000) {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       await new Promise(r => setTimeout(r, 900));
-      const hr = await fetch(`${comfyUrl}/history/${promptId}`, { signal });
+      const hr = await fetch(comfyUrl + "/history/" + promptId, { signal });
       if (!hr.ok) continue;
       const hist = await hr.json();
       const item = hist[promptId];
       if (!item) continue;
       for (const nodeId of Object.keys(item.outputs || {})) {
         const imgs = item.outputs[nodeId].images;
-        if (imgs?.length) { imageInfo = imgs[0]; break; }
+        if (!imgs?.length) continue;
+        for (const img of imgs) {
+          if ((img.filename || "").startsWith("NSFW_Studio_mask")) continue;
+          imageInfo = img;
+          break;
+        }
+        if (imageInfo) break;
       }
       if (imageInfo) break;
       if (item.status?.status_str === "error") throw new Error("ComfyUI workflow error");
     }
     if (!imageInfo) throw new Error("Timeout — no image");
 
-    const viewUrl = `${comfyUrl}/view?filename=${encodeURIComponent(imageInfo.filename)}&subfolder=${encodeURIComponent(imageInfo.subfolder || "")}&type=${encodeURIComponent(imageInfo.type || "output")}`;
-    const ir = await fetch(viewUrl);
+    const viewUrl = comfyUrl + "/view?filename=" + encodeURIComponent(imageInfo.filename) +
+      "&subfolder=" + encodeURIComponent(imageInfo.subfolder || "") +
+      "&type=" + encodeURIComponent(imageInfo.type || "output");
+    const ir = await fetch(viewUrl, { signal });
     if (!ir.ok) throw new Error("Could not fetch image file");
     const blob = await ir.blob();
     const url = await blobToDataUrl(blob);
-    // Komprimera för snabbare galleri/chat
     const compressedUrl = await compressImage(url, 1280, 0.88);
-    return { url: compressedUrl, seed, filename: imageInfo.filename };
+    // Miniatyr för localStorage-spegeln — gör att bilderna överlever omladdning
+    // även när IndexedDB saknas och kvotan inte räcker till fullstora bilder.
+    const thumb = await compressImage(compressedUrl, 512, 0.72);
+    return { url: compressedUrl, thumb, seed, filename: imageInfo.filename };
+  }
+  async function uploadImageToComfy(comfyUrl, dataUrl, signal) {
+    const blob = await (await fetch(dataUrl)).blob();
+    const fd = new FormData();
+    fd.append("image", blob, "input-" + Date.now() + ".png");
+    fd.append("overwrite", "true");
+    fd.append("type", "input");
+    const res = await fetch(comfyUrl + "/upload/image", { method: "POST", body: fd, signal });
+    if (!res.ok) throw new Error("Upload failed: " + res.status);
+    const j = await res.json();
+    if (!j.name) throw new Error("Upload: no name");
+    return j.name;
+  }
+  function buildImg2ImgWorkflow(positive, negative, seed, uploadedName, denoise) {
+    return {
+      "3": {
+        class_type: "KSampler",
+        inputs: {
+          seed, steps: +$("steps").value || 28, cfg: +$("cfg").value || 5.5,
+          sampler_name: $("sampler").value, scheduler: $("scheduler").value, denoise,
+          model: ["4", 0], positive: ["6", 0], negative: ["7", 0], latent_image: ["10", 0],
+        },
+      },
+      "4": { class_type: "CheckpointLoaderSimple", inputs: { ckpt_name: $("ckptSelect").value } },
+      "6": { class_type: "CLIPTextEncode", inputs: { text: positive, clip: ["4", 1] } },
+      "7": { class_type: "CLIPTextEncode", inputs: { text: negative, clip: ["4", 1] } },
+      "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] } },
+      "9": { class_type: "SaveImage", inputs: { filename_prefix: "NSFW_Studio_var", images: ["8", 0] } },
+      "10": { class_type: "VAEEncode", inputs: { pixels: ["11", 0], vae: ["4", 2] } },
+      "11": { class_type: "LoadImage", inputs: { image: uploadedName } },
+    };
+  }
+  async function generateVariation(imageDataUrl, promptText) {
+    if (state.busy) return;
+    const comfyUrl = normalizeBaseUrl($("comfyUrl").value);
+    const ckpt = $("ckptSelect").value;
+    if (!ckpt) { toast("No checkpoint — test ComfyUI"); return; }
+
+    setBusy(true);
+    state.abort = new AbortController();
+    const stopSignal = state.abort.signal;
+
+    const fallback = "same composition, variation, detailed, high quality";
+    let finalPrompt = String(PromptTemplateBuild(promptText || state.lastImagePrompt || "")).slice(0, 350);
+    if (!finalPrompt.trim()) finalPrompt = fallback;
+    const num = Math.min(Math.max(parseInt($("numImages").value) || 1, 1), 4);
+    const denoise = 0.55;
+
+    const note = addMessage("assistant", "Preparing " + num + " variation(s)…");
+    const msg = state.messages.find(m => m.id === note.id);
+
+    try {
+      let en = finalPrompt;
+      if ($("translatePrompt").checked) {
+        updateMessageEl(note.id, "Translating prompt…");
+        en = await translateToEnglish(finalPrompt);
+        if (stopSignal.aborted) throw new DOMException("Aborted", "AbortError");
+      }
+      const stylePos = $("stylePos").value.trim();
+      const positive = stylePos ? en + ", " + stylePos : en;
+      const negative = $("styleNeg").value.trim();
+
+      updateMessageEl(note.id, "Uploading image to ComfyUI…");
+      const uploadedName = await uploadImageToComfy(comfyUrl, imageDataUrl, stopSignal);
+
+      const baseSeed = parseInt($("seed").value);
+      const seeds = [];
+      for (let i = 0; i < num; i++) {
+        if (!Number.isFinite(baseSeed) || baseSeed < 0) seeds.push(Math.floor(Math.random() * 1e15));
+        else seeds.push(baseSeed + i);
+      }
+
+      msg.enPrompt = en; msg.imagePrompt = finalPrompt; msg.images = [];
+      updateMessageEl(note.id, "Sending " + num + " variation(s) to ComfyUI…", { enPrompt: en, images: [] });
+
+      await Promise.allSettled(seeds.map(async (seed, idx) => {
+        try {
+          const workflow = buildImg2ImgWorkflow(positive, negative, seed, uploadedName, denoise);
+          const result = await generateSingleImage(comfyUrl, { seed, positive, negative, workflow }, stopSignal);
+          const m = state.messages.find(x => x.id === note.id);
+          if (m) m.images.push({ url: result.url, seed: result.seed, thumb: result.thumb });
+          saveMessagesToDB().catch(console.error);
+          const m2 = state.messages.find(x => x.id === note.id);
+          updateMessageEl(note.id, m2.images.length + " of " + num + " variation(s) done…", { images: m2.images.slice() });
+          await addToGallery(result.url, en + " (variation, seed " + result.seed + ")");
+        } catch (e) {
+          if (e.name === "AbortError") throw e;
+          toast("Variation " + (idx + 1) + " failed: " + e.message, 4000);
+          const m3 = state.messages.find(x => x.id === note.id);
+          if (m3) updateMessageEl(note.id, m3.images.length + " of " + num + " variation(s) done…\nVariation " + (idx + 1) + " failed: " + e.message, { images: m3.images.slice() });
+        }
+      }));
+      if (stopSignal.aborted) throw new DOMException("Aborted", "AbortError");
+
+      const m4 = state.messages.find(x => x.id === note.id);
+      const finalText = m4 && m4.images.length
+        ? m4.images.length + " variation(s) done.\nOriginal: " + finalPrompt
+        : "No variations could be generated.\nOriginal: " + finalPrompt;
+      updateMessageEl(note.id, finalText, { images: m4 ? m4.images.slice() : [] });
+    } catch (e) {
+      if (e.name === "AbortError") updateMessageEl(note.id, (msg.content || "") + "\n[aborted]");
+      else { updateMessageEl(note.id, "Variation error: " + e.message); toast(e.message, 4000); }
+    } finally {
+      setBusy(false);
+      state.abort = null;
+      saveLocal();
+    }
   }
 
-  // handleSend anropar triggerSend
-  async function handleSend() {
-    await triggerSend();
+  // ===== AUTO-TAGGA =====
+  async function autoTagImage(dataUrl, msgId) {
+    if (state.busy) return;
+    const model = $("visionSelect").value || $("modelSelect").value;
+    if (!model) { toast("Välj en vision-modell"); return; }
+    const sys = "You are an expert Stable Diffusion / ComfyUI prompt engineer. Describe this image as ONE detailed English SD prompt: subject (adult 18+), appearance, hair, eyes, body, clothing, pose, setting, lighting, camera angle, style. Output ONLY the prompt text, no quotes, no explanation, max ~120 words.";
+    setBusy(true);
+    state.abort = new AbortController();
+    try {
+      const out = await ollamaChat({
+        model,
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: "Describe this image as an SD prompt." },
+        ],
+        stream: false,
+        images: [dataUrlToB64(dataUrl)],
+      });
+      const tag = String(out || "").trim().slice(0, 350);
+      if (!tag) { toast("Kunde inte tagga bilden"); return; }
+      const msg = state.messages.find(m => m.id === msgId);
+      if (msg) { msg.imagePrompt = tag; msg.enPrompt = tag; }
+      saveLocal();
+      renderAllMessages();
+      toast("Prompt skapad — använd ↻ eller /vary med den");
+    } catch (e) {
+      toast("Tagging failed: " + e.message, 4000);
+    } finally {
+      setBusy(false);
+      state.abort = null;
+    }
   }
 
-  function autoGrow() {
-    const el = $("prompt");
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 180) + "px";
+  // ===== GALLERI =====
+  async function addToGallery(url, prompt) {
+    const thumb = await compressImage(url, 512, 0.72);
+    state.gallery.unshift({ id: uid(), url, thumb, prompt, ts: Date.now() });
+    if (state.gallery.length > 50) state.gallery = state.gallery.slice(0, 50);
+    renderGallery();
+    await saveGalleryToDB(state.gallery).catch(() => {});
+    saveGalleryLocal();
+  }
+  function saveGalleryLocal() {
+    try {
+      const g = state.gallery.map(x => ({ ...x, url: x.thumb || x.url }));
+      localStorage.setItem("nsfw_studio_gallery_v1", JSON.stringify(g));
+    } catch (e) {}
+  }
+  async function reloadGalleryFromDB() {
+    let items = [];
+    try { items = await loadGalleryFromDB(); } catch (e) { items = []; }
+    if (items.length) {
+      state.gallery = items.map(g => g.id ? g : { ...g, id: uid() });
+      renderGallery();
+      return;
+    }
+    // IndexedDB saknas/tom — försök localStorage-mirror (med miniatyrer).
+    try {
+      const raw = localStorage.getItem("nsfw_studio_gallery_v1");
+      if (raw) {
+        const g = JSON.parse(raw);
+        if (g.length) {
+          state.gallery = g.map(x => x.id ? x : { ...x, id: uid() });
+          renderGallery();
+        }
+      }
+    } catch (e) {}
+  }
+  function renderGallery() {
+    galleryEl.innerHTML = "";
+    galleryEmpty.style.display = state.gallery.length ? "none" : "block";
+    updateGalleryDeleteBtn();
+    for (const g of state.gallery.slice(0, 40)) {
+      const fig = document.createElement("figure");
+      const img = document.createElement("img");
+      img.src = g.url;
+      img.loading = "lazy";
+      const cap = document.createElement("figcaption");
+      cap.textContent = g.prompt;
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "image-checkbox";
+      cb.checked = state.selectedGallery.has(g.id);
+      cb.addEventListener("click", (e) => e.stopPropagation());
+      cb.addEventListener("change", () => toggleGallerySelection(g.id));
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "gallery-del-btn";
+      delBtn.textContent = "×";
+      delBtn.title = "Ta bort bilden";
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteGalleryItem(g.id);
+      });
+
+      fig.append(img, cap, cb, delBtn);
+      fig.onclick = () => openLightbox(g.url, state.gallery.map(x => x.url));
+      galleryEl.appendChild(fig);
+    }
+  }
+  function updateGalleryDeleteBtn() {
+    const n = state.selectedGallery.size;
+    let btn = galleryEl.querySelector(".gallery-delete-selected");
+    if (n === 0) {
+      if (btn) btn.remove();
+      return;
+    }
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.className = "btn small danger gallery-delete-selected";
+      btn.addEventListener("click", deleteSelectedGallery);
+      galleryEl.prepend(btn);
+    }
+    btn.textContent = "Ta bort valda (" + n + ")";
+  }
+  function toggleGallerySelection(id) {
+    if (state.selectedGallery.has(id)) state.selectedGallery.delete(id);
+    else state.selectedGallery.add(id);
+    renderGallery();
+  }
+  function deleteGalleryItem(id) {
+    state.gallery = state.gallery.filter(g => g.id !== id);
+    state.selectedGallery.delete(id);
+    renderGallery();
+    saveGalleryToDB(state.gallery).catch(console.error);
+    toast("Bild borttagen");
+  }
+  function deleteSelectedGallery() {
+    const n = state.selectedGallery.size;
+    state.gallery = state.gallery.filter(g => !state.selectedGallery.has(g.id));
+    state.selectedGallery.clear();
+    renderGallery();
+    saveGalleryToDB(state.gallery).catch(console.error);
+    toast("Tog bort " + n + " bild(er)");
   }
 
-  function applyPreset(key) {
-    $("systemPrompt").value = (key === "default") ? langStrings[currentLang].systemPrompt : (PRESETS[key] || langStrings[currentLang].systemPrompt);
-    saveLocal();
-    toast("Preset: " + key);
-  }
-
-  async function regenerateLastUserMessage() {
-    if (!state.lastUserMessage) { toast("No previous message to regenerate"); return; }
-    await triggerSend(state.lastUserMessage);
-  }
-
+  // ===== AVATARS =====
   async function handleAvatarUpload(type, file) {
     try {
-      const dataUrl = await readFileAsDataUrl(file);
+      const dataUrl = await blobToDataUrl(file);
       const compressed = await compressImage(dataUrl, 200, 0.8);
       if (type === "user") {
         state.avatars.user = compressed;
@@ -2581,9 +2732,9 @@ Rules:
       await saveAvatarsToDB();
       saveAvatarsLocal();
       renderAllMessages();
-      toast("Profile picture saved");
+      toast("Profilbild sparad");
     } catch (e) {
-      toast("Could not upload image: " + e.message);
+      toast("Kunde inte ladda upp bilden: " + e.message);
     }
   }
 
@@ -2598,12 +2749,17 @@ Rules:
   };
   $("btnDrawerClose").onclick = closeDrawer;
   $("drawerBackdrop").onclick = closeDrawer;
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeDrawer(); closeLightbox(); }
+    if (!$("lightbox").classList.contains("open")) return;
+    if (e.key === "ArrowRight") lightboxNext();
+    if (e.key === "ArrowLeft") lightboxPrev();
+  });
 
   // ===== TOM KATEGORI I PROMPTMALLEN =====
   [
-    "ddQuality","ddSubject","ddPose","ddClothing","ddSetting","ddLighting","ddCamera",
-    "ddBodyType","ddHairColor","ddHairStyle","ddEyeColor","ddTattoo","ddPiercing","ddNudity","ddExplicit"
+    "ddQuality", "ddSubject", "ddPose", "ddClothing", "ddSetting", "ddLighting", "ddCamera",
+    "ddBodyType", "ddHairColor", "ddHairStyle", "ddEyeColor", "ddTattoo", "ddPiercing", "ddNudity", "ddExplicit",
   ].forEach(id => {
     const o = document.createElement("option");
     o.value = "";
@@ -2611,7 +2767,18 @@ Rules:
     $(id).prepend(o);
   });
 
-  // ===== KAMERA (mobil: capture öppnar kameran) =====
+  // ===== AVATARFILER =====
+  // ===== FIX: filväljarna var inte kopplade — profilbilder kunde inte laddas upp =====
+  $("avatarUserInput").onchange = (e) => {
+    if (e.target.files[0]) handleAvatarUpload("user", e.target.files[0]);
+    e.target.value = "";
+  };
+  $("avatarAIInput").onchange = (e) => {
+    if (e.target.files[0]) handleAvatarUpload("ai", e.target.files[0]);
+    e.target.value = "";
+  };
+
+  // ===== KAMERA =====
   $("btnCamera").onclick = () => $("cameraInput").click();
   $("cameraInput").onchange = async () => {
     if ($("cameraInput").files?.length) await addFiles($("cameraInput").files);
@@ -2631,109 +2798,122 @@ Rules:
   // ===== NAMN =====
   $("userNameInput").addEventListener("change", () => {
     state.userName = $("userNameInput").value.trim();
-    saveLocal(); renderAllMessages();
+    saveLocal();
+    renderAllMessages();
   });
   $("assistantNameInput").addEventListener("change", () => {
     state.assistantName = $("assistantNameInput").value.trim();
-    saveLocal(); renderAllMessages();
+    saveLocal();
+    renderAllMessages();
   });
 
-  // events
-  $("btnSend").onclick = handleSend;
-  $("btnImage").onclick = () => {
-    const text = $("prompt").value.trim();
-    if (!text) return toast("Write an image prompt first");
+  // ===== EVENTS =====
+  $("btnSend").onclick = () => {
+    const t = $("prompt").value;
     $("prompt").value = "";
-    autoGrow();
-    generateImage(text.replace(/^\/img(?:age)?\s*/i, "").slice(0, 350));
+    triggerSend(t);
+  };
+  $("btnImage").onclick = () => {
+    const t = $("prompt").value.trim();
+    if (!t) { toast("Skriv en prompt först"); return; }
+    $("prompt").value = "";
+    triggerSend("/image " + t);
   };
   $("btnAttach").onclick = () => $("fileInput").click();
   $("fileInput").onchange = async () => {
     if ($("fileInput").files?.length) await addFiles($("fileInput").files);
     $("fileInput").value = "";
   };
-  $("btnStop").onclick = () => state.abort?.abort();
-  $("btnClear").onclick = () => {
-    if (confirm("Clear entire chat?")) {
-      state.messages = []; state.pendingImages = []; renderAttachBar();
-      state.selectedImages.clear();
-      saveLocal(); renderAllMessages();
-    }
-  };
-  $("btnRegenerate").onclick = regenerateLastUserMessage;
-  $("btnExport").onclick = () => {
-    const blob = new Blob([JSON.stringify({
-      exportedAt: new Date().toISOString(),
-      messages: state.messages.map(m => ({
-        role: m.role, content: m.content, enPrompt: m.enPrompt, imagePrompt: m.imagePrompt, ts: m.ts,
-        images: m.images || []
-      }))
-    }, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `nsfw-chat-${Date.now()}.json`;
-    a.click();
+  $("btnStop").onclick = () => {
+    state.abort?.abort();
+    toast("Stoppar…");
   };
   $("btnRefresh").onclick = refreshConnections;
   $("btnTestComfy").onclick = () => testComfyUI(true);
   $("btnTestOllama").onclick = () => testOllama(true);
   $("btnClearGallery").onclick = async () => {
     state.gallery = [];
+    state.selectedGallery.clear();
     renderGallery();
     await clearGalleryDB();
-    toast("Gallery cleared");
+    toast("Galleriet rensat");
   };
   $("btnRegenLast").onclick = () => {
-    if (state.lastImagePrompt) generateImage(state.lastImagePrompt);
-    else toast("No previous prompt");
+    if (!state.lastImagePrompt) { toast("Ingen tidigare prompt"); return; }
+    generateImage(state.lastImagePrompt);
   };
-  $("presetDefault").onclick = () => applyPreset("default");
-  $("presetRomance").onclick = () => applyPreset("romance");
-  $("presetExplicit").onclick = () => applyPreset("explicit");
-  $("presetDom").onclick = () => applyPreset("dom");
-  $("prompt").addEventListener("input", autoGrow);
+  $("btnRegenerate").onclick = () => {
+    if (!state.lastUserMessage) { toast("Inget tidigare meddelande"); return; }
+    triggerSend(state.lastUserMessage);
+  };
+  $("btnClear").onclick = () => {
+    state.messages = [];
+    state.pendingImages = [];
+    renderAttachBar();
+    saveLocal();
+    renderAllMessages();
+    toast("Chatten rensad");
+  };
+  $("btnExport").onclick = () => {
+    const blob = new Blob([JSON.stringify(state.messages, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "nsfw_studio_chat.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("Exporterad");
+  };
   $("prompt").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      $("btnSend").click();
+    }
   });
 
-  $("avatarUserInput").addEventListener("change", (e) => {
-    if (e.target.files[0]) handleAvatarUpload("user", e.target.files[0]);
-  });
-  $("avatarAIInput").addEventListener("change", (e) => {
-    if (e.target.files[0]) handleAvatarUpload("ai", e.target.files[0]);
-  });
-
+  // ===== CHANGE-LYSSNARE =====
   [
-    "ddQuality","ddSubject","ddPose","ddClothing","ddSetting","ddLighting","ddCamera",
-    "ddBodyType","ddHairColor","ddHairStyle","ddEyeColor","ddTattoo","ddPiercing","ddNudity","ddExplicit",
-    "ddCustomTags","usePromptTemplate","numImages"
+    "ollamaUrl", "comfyUrl", "systemPrompt", "stylePos", "styleNeg", "imgW", "imgH", "steps", "cfg",
+    "sampler", "scheduler", "numCtx", "modelSelect", "visionSelect", "ckptSelect",
+    "streamToggle", "autoImage", "translatePrompt", "showEnPrompt",
+  ].forEach(id => $(id).addEventListener("change", saveLocal));
+  [
+    "ddQuality", "ddSubject", "ddPose", "ddClothing", "ddSetting", "ddLighting", "ddCamera",
+    "ddBodyType", "ddHairColor", "ddHairStyle", "ddEyeColor", "ddTattoo", "ddPiercing", "ddNudity", "ddExplicit",
+    "ddCustomTags", "usePromptTemplate", "numImages",
   ].forEach(id => $(id).addEventListener("change", saveLocal));
 
-  [
-    "ollamaUrl","comfyUrl","systemPrompt","stylePos","styleNeg","imgW","imgH","steps","cfg",
-    "sampler","scheduler","numCtx","modelSelect","visionSelect","ckptSelect",
-    "streamToggle","autoImage","translatePrompt","showEnPrompt"
-  ].forEach(id => $(id).addEventListener("change", saveLocal));
-
-  // autoImage toggle – bara toast
-  $('autoImage').addEventListener('change', function() {
-      if (this.checked) {
-          toast("Auto-image from /image enabled");
-      } else {
-          toast("Auto-image from /image disabled");
-      }
+  // ===== DRAG & DROP =====
+  window.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    dropOverlay.style.display = "flex";
+  });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("dragleave", (e) => {
+    if (e.target === document.body) dropOverlay.style.display = "none";
+  });
+  window.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropOverlay.style.display = "none";
+    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
   });
 
-  // boot
+  // ===== MODAL =====
+  document.querySelectorAll(".modal").forEach(m => {
+    m.addEventListener("click", (e) => {
+      if (e.target === m) m.classList.remove("open");
+    });
+  });
+  $("lightboxPrev").onclick = (e) => { e.stopPropagation(); lightboxPrev(); };
+  $("lightboxNext").onclick = (e) => { e.stopPropagation(); lightboxNext(); };
+
+  // ===== BOOT =====
   async function boot() {
-    // IndexedDB kan vara otillgänglig (t.ex. file:// i Safari) — fortsätt ändå.
-    try { await openDB(); } catch (e) { console.warn("IndexedDB otillgänglig:", e); }
-    await reloadGalleryFromDB();
-    loadLocal();
+    console.log("NSFW Studio v2.1 — index.html");
+    try {
+      try { await openDB(); } catch (e) { console.warn("IndexedDB otillgänglig:", e); }
+      await reloadGalleryFromDB();
+      loadLocal();
 
-    // Chatt: välj den källa som är mest komplett — bilder väger tyngst.
-    // Annars försvinner bilderna om localStorage-spegeln är för gammal (quota)
-    // medan IndexedDB har allt.
     const fromMirror = loadChatLocal();
     let fromDB = [];
     try { fromDB = await loadMessagesFromDB(); } catch (e) {}
@@ -2742,12 +2922,18 @@ Rules:
       for (const m of arr) imgs += (m.images?.length || 0) + (m.attachDataUrl ? 1 : 0);
       return arr.length + imgs * 1000;
     };
-    const savedMessages = chatScore(fromDB) > chatScore(fromMirror) ? fromDB : fromMirror;
+    const lastTs = (arr) => arr.reduce((mx, m) => Math.max(mx, m.ts || 0), 0);
+    // IndexedDB har fullstora bilder — välj den när den är minst lika komplett
+    // och inte äldre än spegeln. Annars spegeln (med miniatyrbilder).
+    const dbBetter = chatScore(fromDB) > chatScore(fromMirror) ||
+      (chatScore(fromDB) === chatScore(fromMirror) && lastTs(fromDB) >= lastTs(fromMirror));
+    const savedMessages = (fromDB.length && dbBetter) ? fromDB : fromMirror;
     if (savedMessages.length) state.messages = savedMessages;
 
-    // Avatars: mirror först, annars IndexedDB.
     const localAvatars = loadAvatarsLocal();
-    if (localAvatars) {
+    // Spegeln gäller bara om den faktiskt innehåller en avatar — annars
+    // (t.ex. efter att kvotan tömde den) fall tillbaka till IndexedDB.
+    if (localAvatars && (localAvatars.user || localAvatars.ai)) {
       state.avatars.user = localAvatars.user || null;
       state.avatars.ai = localAvatars.ai || null;
     } else {
@@ -2765,13 +2951,19 @@ Rules:
       $("avatarAIPreview").src = state.avatars.ai;
       $("avatarAIPreview").style.display = "block";
     }
-    initTheme();
-    initLang(); // Sätt språk initialt
-    if (!$("numCtx").value) $("numCtx").value = 131072;
-    renderAllMessages();
-    renderGallery();
-    refreshConnections();
-    // ===== NYTT: Markera att uppstarten är klar =====
+      initTheme();
+      initLang();
+      if (!$("numCtx").value) $("numCtx").value = 131072;
+      renderAllMessages();
+      renderGallery();
+      refreshConnections();
+    } catch (e) {
+      // Fel får aldrig lämna chatten tom — rendera det vi har och fortsätt.
+      console.error("boot fel — renderar med det vi har:", e);
+      try { renderAllMessages(); } catch {}
+      try { renderGallery(); } catch {}
+      try { refreshConnections(); } catch {}
+    }
     bootComplete = true;
   }
   boot();
