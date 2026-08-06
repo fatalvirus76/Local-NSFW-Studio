@@ -187,11 +187,28 @@
     }
     .msg img.attach { max-height: 280px; object-fit: contain; }
     .msg .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .btn.tiny { font-size: 11px; padding: 2px 8px; }
     .msg .en-prompt {
       margin-top: 8px; padding: 8px 10px; border-radius: 8px;
       background: var(--en-prompt-bg);
       border: 1px dashed var(--border); color: var(--text); font-size: 12px; white-space: pre-wrap;
     }
+    .en-copy-btn { float: right; margin-left: 8px; }
+    /* ===== markdown-rendering i meddelanden ===== */
+    .content { white-space: normal; }
+    .content p { margin: 4px 0; }
+    .content ul, .content ol { margin: 4px 0; padding-left: 20px; }
+    .content li { margin: 2px 0; }
+    .content pre {
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px; overflow-x: auto; margin: 6px 0;
+    }
+    .content pre code { background: none; padding: 0; }
+    .content code {
+      background: rgba(0,0,0,0.3); border-radius: 4px; padding: 1px 5px; font-size: 12px;
+    }
+    .content h1, .content h2, .content h3 { margin: 8px 0 4px; font-size: 15px; }
+    .content blockquote { border-left: 3px solid var(--border); padding-left: 10px; color: var(--muted); margin: 6px 0; }
     .composer {
       border-top: 1px solid var(--border); padding: 14px 16px 16px;
       background: var(--composer-bg); backdrop-filter: blur(10px);
@@ -448,56 +465,50 @@
       margin-left: 5px;
     }
     .avatar {
-      width: 112px;
-      height: 112px;
+      width: var(--avatar-size, 128px);
+      height: var(--avatar-size, 128px);
       border-radius: 50%;
       object-fit: cover;
-      margin-right: 10px;
-      border: 2px solid var(--accent);
+      margin-right: 8px;
+      border: 1.5px solid var(--accent);
       flex-shrink: 0;
+      cursor: pointer;
     }
-    .msg-header {
+    .msg .header {
       display: flex;
       align-items: center;
-      gap: 10px;
+      margin-bottom: 6px;
     }
-    .msg-body {
-      flex: 1;
     }
 
-    /* ===== Meddelande-knappar ===== */
-    .msg-actions {
-      position: absolute;
-      top: 4px;
-      right: 6px;
-      display: flex;
-      gap: 4px;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-    .msg:hover .msg-actions {
-      opacity: 1;
-    }
-    .msg-action-btn {
-      background: rgba(0,0,0,0.6);
-      border: none;
-      color: white;
-      border-radius: 50%;
-      width: 26px;
-      height: 26px;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      transition: background 0.15s;
-    }
-    .msg-action-btn:hover {
+    /* ===== kö-märke ===== */
+    .queue-badge {
+      display: inline-block;
+      margin-top: 4px;
       background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 10px;
     }
-    .msg-action-btn.delete-btn:hover {
-      background: var(--err);
+
+    /* ===== chattväljare ===== */
+    .chat-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      padding: 4px 14px 8px;
+    }
+    .chat-row select {
+      flex: 1;
+      min-width: 0;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 13px;
     }
 
     /* ===== versionsmärke ===== */
@@ -525,13 +536,19 @@
   <div class="drop-overlay" id="dropOverlay">Släpp bild här för analys</div>
 
   <header>
-    <h1>✦ Local NSFW Studio — Ollama + ComfyUI <span class="ver-badge" id="verBadge">v2.1</span></h1>
+    <h1>✦ Local NSFW Studio — Ollama + ComfyUI <span class="ver-badge" id="verBadge">v2.2</span></h1>
     <div class="status-row">
       <span><i class="dot" id="ollamaDot"></i>Ollama <span id="ollamaStatus">…</span></span>
       <span><i class="dot" id="comfyDot"></i>ComfyUI <span id="comfyStatus">…</span></span>
       <span style="opacity:.8">ctx 131072</span>
       <button class="btn small ghost" id="btnRefresh">Uppdatera</button>
       <button class="btn small ghost" id="btnMenu" title="Inställningar">☰</button>
+    </div>
+    <div class="chat-row">
+      <select id="chatSelect" title="Växla chatt"></select>
+      <button class="btn tiny" id="btnNewChat" title="Ny chatt">＋</button>
+      <button class="btn tiny" id="btnRenameChat" title="Byt namn">✎</button>
+      <button class="btn tiny" id="btnDeleteChat" title="Ta bort chatt">✕</button>
     </div>
   </header>
 
@@ -586,7 +603,7 @@
       <div class="switch"><span>Översätt bildprompt → engelska</span><input type="checkbox" id="translatePrompt" checked /></div>
       <div class="switch"><span>Visa engelsk prompt i chatten</span><input type="checkbox" id="showEnPrompt" checked /></div>
       <div class="switch"><span>Streama svar</span><input type="checkbox" id="streamToggle" checked /></div>
-      <div class="switch"><span>Auto-bild från /image</span><input type="checkbox" id="autoImage" checked /></div>
+      <div class="switch"><span>Auto-bild efter chatt-svar</span><input type="checkbox" id="autoImage" checked /></div>
     </div>
 
     <div>
@@ -606,6 +623,10 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
       <div class="chip-row" style="margin-top:8px;">
         <span class="chip" id="presetDefault">Standard 18–20</span>
         <span class="chip" id="presetRomance">Romantik</span>
+        <span class="chip" id="presetBestie">Bästa kompis</span>
+        <span class="chip" id="presetGF">Flickvän</span>
+        <span class="chip" id="presetColleague">Kollega</span>
+        <span class="chip" id="presetDoctor">Doktor</span>
         <span class="chip" id="presetExplicit">Explicit</span>
         <span class="chip" id="presetDom">Maktspel</span>
       </div>
@@ -634,6 +655,9 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
         </div>
       </div>
       <div class="hint">Ladda upp en profilbild för dig och en för assistenten. Kommer ihåg efter omladdning. Tryck på en avatar i chatten för att bifoga den för analys.</div>
+      <label>Profilbildstorlek</label>
+      <input type="range" id="avatarSizeInput" min="48" max="200" value="128" />
+      <span class="hint" id="avatarSizeLabel">128 px</span>
     </div>
 
     <div>
@@ -677,6 +701,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="foggy morning mist visibility low">foggy, morning, mist, visibility low</option>
 <option value="dust particles floating air light">dust particles, floating, air light</option>
 <option value="cybernetic metallic chrome finish">cybernetic, metallic, chrome finish</option>
+<option value="porn style high quality">porn style high quality</option>
+<option value="amateur porn aesthetic">amateur porn aesthetic</option>
+<option value="professional porn production quality">professional porn production quality</option>
+<option value="softcore glamour lighting">softcore glamour lighting</option>
+<option value="hardcore explicit style">hardcore explicit style</option>
+<option value="webcam amateur vibe">webcam amateur vibe</option>
+<option value="boudoir photography style">boudoir photography style</option>
+<option value="xxx rated cinematic">xxx rated cinematic</option>
+<option value="hentai style explicit">hentai style explicit</option>
+<option value="hyperrealistic nude detail">hyperrealistic nude detail</option>
+<option value="skin texture pores detail">skin texture pores detail</option>
+<option value="glistening wet skin shine">glistening wet skin shine</option>
+<option value="oiled body sheen">oiled body sheen</option>
+<option value="sweat glistening skin">sweat glistening skin</option>
+<option value="flushed skin arousal glow">flushed skin arousal glow</option>
+<option value="glossy lips wet shine">glossy lips wet shine</option>
+<option value="detailed genital closeup">detailed genital closeup</option>
+<option value="realistic nipple texture">realistic nipple texture</option>
+<option value="natural bush pubic hair">natural bush pubic hair</option>
+<option value="shaved smooth skin">shaved smooth skin</option>
+<option value="lace marks on skin">lace marks on skin</option>
+<option value="fingerprint marks on thighs">fingerprint marks on thighs</option>
+<option value="hickey marks neck">hickey marks neck</option>
+<option value="bite marks skin">bite marks skin</option>
+<option value="messy makeup sex look">messy makeup sex look</option>
+<option value="ruined lipstick smeared">ruined lipstick smeared</option>
+<option value="mascara running tears">mascara running tears</option>
+<option value="cum glistening body">cum glistening body</option>
+<option value="raw unfiltered amateur feel">raw unfiltered amateur feel</option>
+<option value="high-end glamour nude">high-end glamour nude</option>
 </select>
 
 <label>Subject description (18–20 år)</label>
@@ -701,6 +755,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="bald head shaved skin texture">bald head, shaved, skin texture</option>
 <option value="platinum blonde curly wavy locks">platinum, blonde, curly wavy locks</option>
 <option value="black hair messy bun wild look">black hair, messy bun, wild look</option>
+<option value="young woman naked seductive">young woman naked seductive</option>
+<option value="busty woman nude posing">busty woman nude posing</option>
+<option value="petite girl topless teasing">petite girl topless teasing</option>
+<option value="tall slender woman naked">tall slender woman naked</option>
+<option value="curvy woman nude">curvy woman nude</option>
+<option value="athletic woman nude gym">athletic woman nude gym</option>
+<option value="blonde bombshell naked">blonde bombshell naked</option>
+<option value="redhead nude freckles">redhead nude freckles</option>
+<option value="brunette girl naked shy">brunette girl naked shy</option>
+<option value="goth girl nude pale skin">goth girl nude pale skin</option>
+<option value="alt girl naked piercings">alt girl naked piercings</option>
+<option value="asian woman nude">asian woman nude</option>
+<option value="latina woman naked">latina woman naked</option>
+<option value="black woman nude curves">black woman nude curves</option>
+<option value="girl next door naked">girl next door naked</option>
+<option value="young adult naked">young adult naked</option>
+<option value="mature woman nude sensual">mature woman nude sensual</option>
+<option value="thicc woman naked">thicc woman naked</option>
+<option value="fit woman nude yoga">fit woman nude yoga</option>
+<option value="dancer woman nude graceful">dancer woman nude graceful</option>
+<option value="model woman naked pose">model woman naked pose</option>
+<option value="office woman naked after work">office woman naked after work</option>
+<option value="nurse roleplay naked">nurse roleplay naked</option>
+<option value="teacher roleplay nude">teacher roleplay nude</option>
+<option value="cheerleader naked">cheerleader naked</option>
+<option value="maid outfit nude">maid outfit nude</option>
+<option value="policewoman roleplay nude">policewoman roleplay nude</option>
+<option value="goth vampire girl naked">goth vampire girl naked</option>
+<option value="mermaid fantasy naked">mermaid fantasy naked</option>
+<option value="elf fantasy girl nude">elf fantasy girl nude</option>
 </select>
 
 <label>Pose / Action</label>
@@ -725,6 +809,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="hugging from behind embrace">hugging from behind, embrace</option>
 <option value="looking over shoulder mysterious">looking over, shoulder, mysterious</option>
 <option value="hands behind back tied ropes">hands behind, back, tied ropes</option>
+<option value="spread legs wide open inviting">spread legs wide open inviting</option>
+<option value="on back legs apart">on back legs apart</option>
+<option value="on knees presenting ass">on knees presenting ass</option>
+<option value="bent over window looking back">bent over window looking back</option>
+<option value="riding face sitting">riding face sitting</option>
+<option value="scissoring with partner">scissoring with partner</option>
+<option value="standing split legs">standing split legs</option>
+<option value="kneeling oral ready">kneeling oral ready</option>
+<option value="lying side arching back">lying side arching back</option>
+<option value="propped on elbows chest out">propped on elbows chest out</option>
+<option value="squatting spread pussy">squatting spread pussy</option>
+<option value="standing doggy against wall">standing doggy against wall</option>
+<option value="legs over shoulders position">legs over shoulders position</option>
+<option value="grinding on lap">grinding on lap</option>
+<option value="straddling waist">straddling waist</option>
+<option value="back arched deep arch">back arched deep arch</option>
+<option value="on all fours arching">on all fours arching</option>
+<option value="facing away bending over">facing away bending over</option>
+<option value="sitting on heels thighs apart">sitting on heels thighs apart</option>
+<option value="one leg up on chair">one leg up on chair</option>
+<option value="spread on desk">spread on desk</option>
+<option value="leaning back hands behind">leaning back hands behind</option>
+<option value="touching self breasts">touching self breasts</option>
+<option value="rubbing clit fingers">rubbing clit fingers</option>
+<option value="inserting dildo">inserting dildo</option>
+<option value="fingers inside pussy">fingers inside pussy</option>
+<option value="anal plug inserted">anal plug inserted</option>
+<option value="riding dildo bouncing">riding dildo bouncing</option>
+<option value="orgasm arching moaning">orgasm arching moaning</option>
+<option value="post-orgasm trembling">post-orgasm trembling</option>
 </select>
 
 <label>Clothing / State</label>
@@ -749,6 +863,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="naked with towel draped over">naked with, towel draped over</option>
 <option value="strapless bra visible cleavage">strapless bra, visible cleavage</option>
 <option value="tight jeans exposed belly">tight jeans, exposed belly</option>
+<option value="totally naked no clothes">totally naked no clothes</option>
+<option value="fully nude bare skin">fully nude bare skin</option>
+<option value="nude except high heels">nude except high heels</option>
+<option value="nude with necklace only">nude with necklace only</option>
+<option value="nude with stockings only">nude with stockings only</option>
+<option value="nude with garter belt">nude with garter belt</option>
+<option value="topless open shirt">topless open shirt</option>
+<option value="unbuttoned jeans below hips">unbuttoned jeans below hips</option>
+<option value="panties pulled to side">panties pulled to side</option>
+<option value="thong pulled aside">thong pulled aside</option>
+<option value="bra pushed up breasts out">bra pushed up breasts out</option>
+<option value="dress hiked up no panties">dress hiked up no panties</option>
+<option value="skirt lifted no underwear">skirt lifted no underwear</option>
+<option value="wet tshirt see through">wet tshirt see through</option>
+<option value="white shirt see through bra">white shirt see through bra</option>
+<option value="lingerie half removed">lingerie half removed</option>
+<option value="corset unlaced open">corset unlaced open</option>
+<option value="latex suit unzipped open">latex suit unzipped open</option>
+<option value="school uniform skirt up">school uniform skirt up</option>
+<option value="maid outfit breast out">maid outfit breast out</option>
+<option value="nurse uniform unbuttoned">nurse uniform unbuttoned</option>
+<option value="business jacket open naked">business jacket open naked</option>
+<option value="towel falling off">towel falling off</option>
+<option value="robe open fully exposed">robe open fully exposed</option>
+<option value="sheets barely covering">sheets barely covering</option>
+<option value="fishnet stockings only">fishnet stockings only</option>
+<option value="suspenders straps down">suspenders straps down</option>
+<option value="crotchless panties">crotchless panties</option>
+<option value="crotchless stockings">crotchless stockings</option>
+<option value="nude in open trench coat">nude in open trench coat</option>
 </select>
 
 <label>Setting / Background</label>
@@ -773,6 +917,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="theater stage spotlight black">theater, stage, spotlight, black</option>
 <option value="airport terminal tiled floors">airport, terminal, tiled floors</option>
 <option value="mansion hallway vast empty">mansion, hallway, vast, empty</option>
+<option value="luxury bedroom silk sheets">luxury bedroom silk sheets</option>
+<option value="hotel room nightstand">hotel room nightstand</option>
+<option value="sex dungeon chains">sex dungeon chains</option>
+<option value="locker room shower">locker room shower</option>
+<option value="sauna steam naked">sauna steam naked</option>
+<option value="jacuzzi bubbles nude">jacuzzi bubbles nude</option>
+<option value="pool at night nude swim">pool at night nude swim</option>
+<option value="beach towel naked">beach towel naked</option>
+<option value="forest clearing naked">forest clearing naked</option>
+<option value="cabin fireplace naked">cabin fireplace naked</option>
+<option value="vintage boudoir red velvet">vintage boudoir red velvet</option>
+<option value="mirrored bedroom all angles">mirrored bedroom all angles</option>
+<option value="glass shower see through">glass shower see through</option>
+<option value="bathtub full foam naked">bathtub full foam naked</option>
+<option value="swingers club dark">swingers club dark</option>
+<option value="strip club stage pole">strip club stage pole</option>
+<option value="dressing room mirror">dressing room mirror</option>
+<option value="limousine backseat">limousine backseat</option>
+<option value="office desk after hours">office desk after hours</option>
+<option value="classroom empty school">classroom empty school</option>
+<option value="library back shelves">library back shelves</option>
+<option value="elevator stuck moment">elevator stuck moment</option>
+<option value="rooftop night city">rooftop night city</option>
+<option value="tent camping naked">tent camping naked</option>
+<option value="van bed road trip">van bed road trip</option>
+<option value="yacht deck sunset nude">yacht deck sunset nude</option>
+<option value="hotel balcony railing">hotel balcony railing</option>
+<option value="cellar wine rack">cellar wine rack</option>
+<option value="sauna wooden benches">sauna wooden benches</option>
+<option value="bathhouse towels">bathhouse towels</option>
 </select>
 
 <label>Lighting</label>
@@ -796,6 +970,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="computer screen blue backlight">computer, screen, blue, backlight</option>
 <option value="rain window reflection colors">rain window, reflection, colors</option>
 <option value="laser show rainbow beams">laser, show, rainbow, beams</option>
+<option value="candlelight flickering warm">candlelight flickering warm</option>
+<option value="red neon glow erotic">red neon glow erotic</option>
+<option value="pink neon bedroom">pink neon bedroom</option>
+<option value="purple strobe lights">purple strobe lights</option>
+<option value="dim lamp bedside">dim lamp bedside</option>
+<option value="silhouette backlight nude">silhouette backlight nude</option>
+<option value="rim light curves body">rim light curves body</option>
+<option value="warm sunset on skin">warm sunset on skin</option>
+<option value="moonlight through window">moonlight through window</option>
+<option value="fairy lights bokeh">fairy lights bokeh</option>
+<option value="fireplace glow orange">fireplace glow orange</option>
+<option value="bathroom mirror light">bathroom mirror light</option>
+<option value="strip light LED pink">strip light LED pink</option>
+<option value="disco ball lights">disco ball lights</option>
+<option value="flashlight under chin">flashlight under chin</option>
+<option value="car headlights night">car headlights night</option>
+<option value="projector light patterns">projector light patterns</option>
+<option value="soft window daylight nude">soft window daylight nude</option>
+<option value="golden hour glowing skin">golden hour glowing skin</option>
+<option value="blue hour cool tone">blue hour cool tone</option>
+<option value="harsh flash amateur">harsh flash amateur</option>
+<option value="polaroid flash look">polaroid flash look</option>
+<option value="blacklight neon skin">blacklight neon skin</option>
+<option value="ultraviolet glow paint">ultraviolet glow paint</option>
+<option value="spotlight single beam">spotlight single beam</option>
+<option value="stage lights colored">stage lights colored</option>
+<option value="tv screen glow dark room">tv screen glow dark room</option>
+<option value="laptop screen light">laptop screen light</option>
+<option value="phone flashlight selfie">phone flashlight selfie</option>
+<option value="lava lamp ambient">lava lamp ambient</option>
 </select>
 
 <label>Camera angle</label>
@@ -819,6 +1023,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="bokeh background blurry lights">bokeh, background, blurry lights</option>
 <option value="telephoto compression face">telephoto, compression, face</option>
 <option value="lens flare light circle">lens, flare, light, circle</option>
+<option value="extreme closeup pussy">extreme closeup pussy</option>
+<option value="closeup breasts nipples">closeup breasts nipples</option>
+<option value="POV looking down body">POV looking down body</option>
+<option value="POV blowjob angle">POV blowjob angle</option>
+<option value="POV missionary view">POV missionary view</option>
+<option value="from behind over shoulder">from behind over shoulder</option>
+<option value="low angle between legs">low angle between legs</option>
+<option value="high angle top down spread">high angle top down spread</option>
+<option value="selfie mirror bedroom">selfie mirror bedroom</option>
+<option value="selfie bathroom mirror">selfie bathroom mirror</option>
+<option value="webcam angle amateur">webcam angle amateur</option>
+<option value="fisheye selfie nude">fisheye selfie nude</option>
+<option value="macro nipple detail">macro nipple detail</option>
+<option value="macro wet skin drops">macro wet skin drops</option>
+<option value="side profile silhouette">side profile silhouette</option>
+<option value="back view arching">back view arching</option>
+<option value="ass closeup behind">ass closeup behind</option>
+<option value="tits squeezed closeup">tits squeezed closeup</option>
+<option value="face closeup moaning">face closeup moaning</option>
+<option value="hands closeup touching">hands closeup touching</option>
+<option value="feet closeup toes">feet closeup toes</option>
+<option value="wide shot full scene">wide shot full scene</option>
+<option value="dutch angle intense">dutch angle intense</option>
+<option value="over the top lying">over the top lying</option>
+<option value="under the desk angle">under the desk angle</option>
+<option value="peephole voyeur angle">peephole voyeur angle</option>
+<option value="hidden cam style">hidden cam style</option>
+<option value="gopro angle selfie">gopro angle selfie</option>
+<option value="360 camera shot">360 camera shot</option>
+<option value="cinematic tracking feel">cinematic tracking feel</option>
 </select>
 
 <label>Body type</label>
@@ -839,6 +1073,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="yoga fit body">yoga, fit body</option>
 <option value="model like figure">model like figure</option>
 <option value="natural healthy body">natural, healthy body</option>
+<option value="slim petite nude">slim petite nude</option>
+<option value="curvy thick nude">curvy thick nude</option>
+<option value="hourglass naked">hourglass naked</option>
+<option value="athletic toned nude">athletic toned nude</option>
+<option value="muscular fit naked">muscular fit naked</option>
+<option value="soft chubby nude">soft chubby nude</option>
+<option value="voluptuous big breasts">voluptuous big breasts</option>
+<option value="small breasts petite">small breasts petite</option>
+<option value="large ass round">large ass round</option>
+<option value="flat stomach toned">flat stomach toned</option>
+<option value="wide hips fertile">wide hips fertile</option>
+<option value="narrow waist wide hips">narrow waist wide hips</option>
+<option value="long legs naked">long legs naked</option>
+<option value="strong thighs">strong thighs</option>
+<option value="round booty">round booty</option>
+<option value="perky breasts">perky breasts</option>
+<option value="saggy natural breasts">saggy natural breasts</option>
+<option value="big areolas">big areolas</option>
+<option value="pale skin nude">pale skin nude</option>
+<option value="tan lines nude">tan lines nude</option>
+<option value="freckled skin">freckled skin</option>
+<option value="stretch marks natural">stretch marks natural</option>
+<option value="shaved pussy">shaved pussy</option>
+<option value="hairy pussy bush">hairy pussy bush</option>
+<option value="trimmed landing strip">trimmed landing strip</option>
+<option value="small waist hourglass">small waist hourglass</option>
+<option value="fit glutes toned">fit glutes toned</option>
+<option value="thick thighs">thick thighs</option>
+<option value="bubble butt">bubble butt</option>
+<option value="slim waist curvy hips">slim waist curvy hips</option>
 </select>
 
 <label>Hair color</label>
@@ -863,6 +1127,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="pastel colored hair">pastel colored hair</option>
 <option value="ombre hair">ombre hair</option>
 <option value="rainbow hair">rainbow hair</option>
+<option value="jet black hair">jet black hair</option>
+<option value="raven black hair">raven black hair</option>
+<option value="chestnut brown hair">chestnut brown hair</option>
+<option value="caramel brown hair">caramel brown hair</option>
+<option value="honey blonde hair">honey blonde hair</option>
+<option value="dirty blonde hair">dirty blonde hair</option>
+<option value="ash blonde hair">ash blonde hair</option>
+<option value="golden blonde hair">golden blonde hair</option>
+<option value="strawberry red hair">strawberry red hair</option>
+<option value="copper red hair">copper red hair</option>
+<option value="fire engine red hair">fire engine red hair</option>
+<option value="burgundy hair">burgundy hair</option>
+<option value="wine red hair">wine red hair</option>
+<option value="magenta hair">magenta hair</option>
+<option value="hot pink hair">hot pink hair</option>
+<option value="pastel pink hair">pastel pink hair</option>
+<option value="baby blue hair">baby blue hair</option>
+<option value="turquoise hair">turquoise hair</option>
+<option value="teal hair">teal hair</option>
+<option value="emerald green hair">emerald green hair</option>
+<option value="mint green hair">mint green hair</option>
+<option value="lavender hair">lavender hair</option>
+<option value="violet purple hair">violet purple hair</option>
+<option value="lilac hair">lilac hair</option>
+<option value="silver grey hair">silver grey hair</option>
+<option value="platinum white hair">platinum white hair</option>
+<option value="ombre blonde to brown">ombre blonde to brown</option>
+<option value="ombre black to purple">ombre black to purple</option>
+<option value="two tone split dye">two tone split dye</option>
+<option value="rainbow pastel hair">rainbow pastel hair</option>
 </select>
 
 <label>Hairstyle</label>
@@ -887,6 +1181,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="spiky hair">spiky hair</option>
 <option value="wet hair slicked back">wet hair slicked back</option>
 <option value="voluminous hairstyle">voluminous hairstyle</option>
+<option value="messy sex hair">messy sex hair</option>
+<option value="hair pulled grabbed">hair pulled grabbed</option>
+<option value="hair covering face">hair covering face</option>
+<option value="wet hair dripping">wet hair dripping</option>
+<option value="wet hair stuck to skin">wet hair stuck to skin</option>
+<option value="loose waves tousled">loose waves tousled</option>
+<option value="bed head morning">bed head morning</option>
+<option value="slicked back wet">slicked back wet</option>
+<option value="high ponytail pulled">high ponytail pulled</option>
+<option value="pigtails held">pigtails held</option>
+<option value="braided crown">braided crown</option>
+<option value="dutch braid">dutch braid</option>
+<option value="fishtail braid">fishtail braid</option>
+<option value="bun loose strands">bun loose strands</option>
+<option value="half up messy">half up messy</option>
+<option value="curly wild hair">curly wild hair</option>
+<option value="afro natural hair">afro natural hair</option>
+<option value="side shave undercut">side shave undercut</option>
+<option value="bob with bangs">bob with bangs</option>
+<option value="long straight curtain">long straight curtain</option>
+<option value="layered hair">layered hair</option>
+<option value="wolf cut">wolf cut</option>
+<option value="mullet shag">mullet shag</option>
+<option value="pixie cut">pixie cut</option>
+<option value="buzz cut">buzz cut</option>
+<option value="mohawk">mohawk</option>
+<option value="dreadlocks long">dreadlocks long</option>
+<option value="cornrows">cornrows</option>
+<option value="bantu knots">bantu knots</option>
+<option value="extensions long voluminous">extensions long voluminous</option>
 </select>
 
 <label>Eye color</label>
@@ -907,6 +1231,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="piercing gaze">piercing gaze</option>
 <option value="doe eyes">doe eyes</option>
 <option value="almond shaped eyes">almond shaped eyes</option>
+<option value="brown eyes lustful">brown eyes lustful</option>
+<option value="dark bedroom eyes">dark bedroom eyes</option>
+<option value="hooded seductive eyes">hooded seductive eyes</option>
+<option value="heavy lidded gaze">heavy lidded gaze</option>
+<option value="dilated pupils aroused">dilated pupils aroused</option>
+<option value="teary eyes pleasure">teary eyes pleasure</option>
+<option value="rolling back eyes ecstasy">rolling back eyes ecstasy</option>
+<option value="closed eyes moaning">closed eyes moaning</option>
+<option value="blue eyes intense stare">blue eyes intense stare</option>
+<option value="icy blue piercing">icy blue piercing</option>
+<option value="green eyes smoldering">green eyes smoldering</option>
+<option value="hazel eyes warm">hazel eyes warm</option>
+<option value="amber eyes catlike">amber eyes catlike</option>
+<option value="grey eyes stormy">grey eyes stormy</option>
+<option value="violet eyes exotic">violet eyes exotic</option>
+<option value="heterochromia two colors">heterochromia two colors</option>
+<option value="long lashes fluttering">long lashes fluttering</option>
+<option value="winged eyeliner look">winged eyeliner look</option>
+<option value="smoky eye makeup">smoky eye makeup</option>
+<option value="mascara smudged after sex">mascara smudged after sex</option>
+<option value="sultry gaze over shoulder">sultry gaze over shoulder</option>
+<option value="innocent wide eyes">innocent wide eyes</option>
+<option value="mischievous wink">mischievous wink</option>
+<option value="pleading look">pleading look</option>
+<option value="dominant stare down">dominant stare down</option>
+<option value="submissive eye contact">submissive eye contact</option>
+<option value="blushing eyes downcast">blushing eyes downcast</option>
+<option value="ecstatic teary eyes">ecstatic teary eyes</option>
+<option value="hungry staring lips">hungry staring lips</option>
+<option value="eye contact while riding">eye contact while riding</option>
 </select>
 
 <label>Tattoos</label>
@@ -927,6 +1281,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="henna tattoos">henna tattoos</option>
 <option value="watercolor tattoos">watercolor tattoos</option>
 <option value="full body tattoos">full body tattoos</option>
+<option value="butterfly tattoo hip">butterfly tattoo hip</option>
+<option value="heart tattoo breast">heart tattoo breast</option>
+<option value="rose tattoo breast">rose tattoo breast</option>
+<option value="star tattoo lower back">star tattoo lower back</option>
+<option value="vine tattoo thigh">vine tattoo thigh</option>
+<option value="cherry tattoo hip">cherry tattoo hip</option>
+<option value="swallow tattoo collarbone">swallow tattoo collarbone</option>
+<option value="dragon tattoo back">dragon tattoo back</option>
+<option value="snake tattoo arm">snake tattoo arm</option>
+<option value="skull tattoo chest">skull tattoo chest</option>
+<option value="anchor tattoo wrist">anchor tattoo wrist</option>
+<option value="feather tattoo shoulder">feather tattoo shoulder</option>
+<option value="moon tattoo neck">moon tattoo neck</option>
+<option value="sun tattoo belly">sun tattoo belly</option>
+<option value="script tattoo ribs">script tattoo ribs</option>
+<option value="quote tattoo collarbone">quote tattoo collarbone</option>
+<option value="koi fish tattoo leg">koi fish tattoo leg</option>
+<option value="lotus tattoo ankle">lotus tattoo ankle</option>
+<option value="dreamcatcher tattoo back">dreamcatcher tattoo back</option>
+<option value="owl tattoo shoulder">owl tattoo shoulder</option>
+<option value="wolf tattoo forearm">wolf tattoo forearm</option>
+<option value="lion tattoo chest">lion tattoo chest</option>
+<option value="butterfly sleeve">butterfly sleeve</option>
+<option value="floral sleeve arm">floral sleeve arm</option>
+<option value="full sleeve tattoos">full sleeve tattoos</option>
+<option value="neck tattoo small">neck tattoo small</option>
+<option value="hip tattoo arrow">hip tattoo arrow</option>
+<option value="thigh tattoo garter">thigh tattoo garter</option>
+<option value="chest tattoo eagle">chest tattoo eagle</option>
+<option value="back tattoo wings">back tattoo wings</option>
 </select>
 
 <label>Piercings</label>
@@ -945,6 +1329,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="chain belly piercing">chain belly piercing</option>
 <option value="facial piercings">facial piercings</option>
 <option value="silver jewelry piercings">silver jewelry piercings</option>
+<option value="clitoral hood piercing">clitoral hood piercing</option>
+<option value="double nipple piercings">double nipple piercings</option>
+<option value="vertical nipple barbell">vertical nipple barbell</option>
+<option value="horizontal nipple bar">horizontal nipple bar</option>
+<option value="tongue piercing visible">tongue piercing visible</option>
+<option value="smiley piercing">smiley piercing</option>
+<option value="labret piercing lip">labret piercing lip</option>
+<option value="monroe piercing">monroe piercing</option>
+<option value="medusa piercing">medusa piercing</option>
+<option value="bridge piercing nose">bridge piercing nose</option>
+<option value="high nostril piercing">high nostril piercing</option>
+<option value="daith piercing">daith piercing</option>
+<option value="rook piercing">rook piercing</option>
+<option value="conch piercing">conch piercing</option>
+<option value="helix piercing multiple">helix piercing multiple</option>
+<option value="flat piercing">flat piercing</option>
+<option value="snug piercing">snug piercing</option>
+<option value="industrial bar">industrial bar</option>
+<option value="tragus stud">tragus stud</option>
+<option value="anti-tragus piercing">anti-tragus piercing</option>
+<option value="earlobe stretched">earlobe stretched</option>
+<option value="orbital piercing ear">orbital piercing ear</option>
+<option value="dermal anchors collarbone">dermal anchors collarbone</option>
+<option value="dermal chest piercings">dermal chest piercings</option>
+<option value="belly chain piercing">belly chain piercing</option>
+<option value="navel double piercing">navel double piercing</option>
+<option value="christina piercing">christina piercing</option>
+<option value="fourchette piercing">fourchette piercing</option>
+<option value="prince albert male">prince albert male</option>
+<option value="frenum ladder male">frenum ladder male</option>
 </select>
 
 <label>Nudity level</label>
@@ -965,6 +1379,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="nude on bed">nude on bed</option>
 <option value="nude in shower">nude in shower</option>
 <option value="nude outdoors">nude outdoors</option>
+<option value="fully nude front">fully nude front</option>
+<option value="fully nude back">fully nude back</option>
+<option value="nude side profile">nude side profile</option>
+<option value="completely naked standing">completely naked standing</option>
+<option value="naked sitting legs open">naked sitting legs open</option>
+<option value="naked on knees">naked on knees</option>
+<option value="naked lying back">naked lying back</option>
+<option value="naked on stomach">naked on stomach</option>
+<option value="naked bending over">naked bending over</option>
+<option value="naked arched back">naked arched back</option>
+<option value="nude outdoors">nude outdoors</option>
+<option value="nude in water">nude in water</option>
+<option value="nude under sheets">nude under sheets</option>
+<option value="nude towel only">nude towel only</option>
+<option value="bare breasts only">bare breasts only</option>
+<option value="topless above waist">topless above waist</option>
+<option value="bottomless below waist">bottomless below waist</option>
+<option value="nude with socks only">nude with socks only</option>
+<option value="nude with boots only">nude with boots only</option>
+<option value="nude with gloves only">nude with gloves only</option>
+<option value="full frontal nudity">full frontal nudity</option>
+<option value="rear nudity ass">rear nudity ass</option>
+<option value="side breast view">side breast view</option>
+<option value="nude silhouette">nude silhouette</option>
+<option value="implied nude hand cover">implied nude hand cover</option>
+<option value="nude body paint">nude body paint</option>
+<option value="mud naked">mud naked</option>
+<option value="wet naked skin">wet naked skin</option>
+<option value="oiled naked body">oiled naked body</option>
+<option value="naked glow skin">naked glow skin</option>
 </select>
 
 <label>Explicit acts</label>
@@ -1019,6 +1463,36 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
 <option value="wax play hot candle drips">wax play, hot candle drips</option>
 <option value="sex machine relentless fucking">sex machine, relentless fucking</option>
 <option value="outdoor public sex risky">outdoor, public sex, risky</option>
+<option value="clit licking tongue">clit licking tongue</option>
+<option value="fingering g-spot deep">fingering g-spot deep</option>
+<option value="fisting slow">fisting slow</option>
+<option value="double dildo both holes">double dildo both holes</option>
+<option value="strap-on pegging">strap-on pegging</option>
+<option value="anal creampie">anal creampie</option>
+<option value="pussy creampie dripping">pussy creampie dripping</option>
+<option value="cum swallowing">cum swallowing</option>
+<option value="cum swapping kiss">cum swapping kiss</option>
+<option value="bukkake group facial">bukkake group facial</option>
+<option value="facial cumshot load">facial cumshot load</option>
+<option value="body cumshot cover">body cumshot cover</option>
+<option value="titjob between breasts cum">titjob between breasts cum</option>
+<option value="handjob edging near orgasm">handjob edging near orgasm</option>
+<option value="cock worship kissing">cock worship kissing</option>
+<option value="balls licking sucking">balls licking sucking</option>
+<option value="prostate massage">prostate massage</option>
+<option value="milking orgasm">milking orgasm</option>
+<option value="ruined orgasm">ruined orgasm</option>
+<option value="orgasm denial hands">orgasm denial hands</option>
+<option value="forced multiple orgasms">forced multiple orgasms</option>
+<option value="overstimulation screaming">overstimulation screaming</option>
+<option value="cuckold watching">cuckold watching</option>
+<option value="voyeur spying sex">voyeur spying sex</option>
+<option value="exhibitionist public touching">exhibitionist public touching</option>
+<option value="golden shower play">golden shower play</option>
+<option value="spanking red handprints">spanking red handprints</option>
+<option value="paddling ass">paddling ass</option>
+<option value="whipping marks back">whipping marks back</option>
+<option value="candle wax dripping chest">candle wax dripping chest</option>
 </select>
 </div>
 
@@ -1084,9 +1558,10 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
           <button class="btn ghost" id="btnStop" disabled>Stopp</button>
         </div>
       </div>
-      <input type="file" id="fileInput" accept="image/*" multiple hidden />
+      <input type="file" id="fileInput" accept="image/*,application/pdf,.pdf" multiple hidden />
       <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden />
       <div class="progress" id="progress"><i></i></div>
+      <span class="queue-badge" id="queueBadge" style="display:none"></span>
       <div class="hint">Bildprompt: /image → direkt till ComfyUI | /image tr → översätt först | antal bilder: 1-4 | context 131072 | dra/klistra foto för vision-analys | allt lokalt</div>
     </div>
   </main>
@@ -1108,6 +1583,11 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- PDF.js — för att läsa PDF-dokument (provresultat) och skicka sidorna som bilder -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <!-- marked.js — markdown-rendering av AI-svar -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 
 <script>
 (() => {
@@ -1363,21 +1843,6 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
     });
   }
 
-  const PRESETS = {
-    default: langStrings.en.systemPrompt,
-    romance: `You are a warm, literary uncensored erotic partner for a person aged 18–20.
-Write sensually and young adult. All characters are 18+ adults. Never underage.
-When a photo is sent: describe respectfully and sensually, suggest romantic continuation.
-Answer in the user's language.`,
-    explicit: `You are a direct, uncensored and sexual adult chat partner for a person aged 18–20.
-Be graphic when requested. Everyone is consenting adult 18+.
-When a photo is sent: honest erotic analysis of body/pose/style, build further sexually if they want.
-Answer in the user's language.`,
-    dom: `You lead erotic power play (D/s) for an adult person aged 18–20.
-Consent, tension, commands, aftercare. Everyone 18+.
-When a photo is sent: assess pose/aura in a dominant/attentive tone.
-Answer in the user's language.`
-  };
 
   const state = {
     messages: [],
@@ -1397,6 +1862,8 @@ Answer in the user's language.`
     timedOut: false,
     chatLock: false,
     selectedGallery: new Set(),
+    chats: [],
+    activeChatId: null,
   };
   const LS_KEY = "nsfw_studio_v6";
   const DD_DEFAULTS = {
@@ -1416,7 +1883,8 @@ Answer in the user's language.`
     ddNudity: "fully nude",
     ddExplicit: "sensual intimate mood",
   };
-  const VISION_HINT = /llava|vision|vlm|qwen.*vl|minicpm|bakllava|moondream|gemma3|llama3\.2-vision|pixtral|internvl/i;
+  // ===== FIX: "vision" som fristående ord ska räcka (t.ex. qwen3.5:9b-heretic-vision) =====
+  const VISION_HINT = /llava|vision|vlm|qwen.*vl|qwen.*vision|minicpm|bakllava|moondream|gemma3|llama3\.2-vision|pixtral|internvl/i;
 
   // ===== TEMA =====
   const THEME_KEY = "nsfw_studio_theme";
@@ -1579,17 +2047,23 @@ Answer in the user's language.`
       ddCustomTags: $("ddCustomTags").value,
       userName: $("userNameInput").value,
       assistantName: $("assistantNameInput").value,
+      avatarSize: $("avatarSizeInput").value,
       lastUserMessage: state.lastUserMessage,
     };
     try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {}
     if (bootComplete) {
-      saveChatLocal();
-      saveAvatarsLocal();
+      // ===== FIX: synka aktiva chatten (meddelanden, persona, namn, avatarer) =====
+      const ac = activeChat();
+      if (ac) {
+        ac.messages = state.messages;
+        ac.systemPrompt = $("systemPrompt").value;
+        ac.userName = state.userName;
+        ac.assistantName = state.assistantName;
+        ac.avatarUser = state.avatars.user;
+        ac.avatarAI = state.avatars.ai;
+      }
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        saveMessagesToDB().catch(console.error);
-        saveAvatarsToDB().catch(console.error);
-      }, 400);
+      saveTimer = setTimeout(saveChats, 400);
     }
   }
   function loadLocal() {
@@ -1630,6 +2104,8 @@ Answer in the user's language.`
       if (d.assistantName != null) $("assistantNameInput").value = d.assistantName;
       state.userName = d.userName || "";
       state.assistantName = d.assistantName || "";
+      if (d.avatarSize) $("avatarSizeInput").value = d.avatarSize;
+      applyAvatarSize($("avatarSizeInput").value);
       if (d.lastUserMessage) state.lastUserMessage = d.lastUserMessage;
     } catch (e) {}
   }
@@ -1728,10 +2204,11 @@ Answer in the user's language.`
         num_ctx: parseInt($("numCtx").value) || 131072,
       },
     };
-    if (images && images.length) payload.images = images;
+    // Bilder läggs i message-objekten (payload.images top-level stöds inte av Ollama).
     // 5 minuters hård gräns
     state.timedOut = false;
-    const timeoutId = setTimeout(() => { state.timedOut = true; state.abort?.abort(); }, 300000);
+    // 30 minuters hård gräns (25 PDF-filer tar lång tid).
+    const timeoutId = setTimeout(() => { state.timedOut = true; state.abort?.abort(); }, 1800000);
     let res;
     try {
       res = await fetch(ollamaUrl + "/api/chat", {
@@ -1818,6 +2295,15 @@ Answer in the user's language.`
     chatEl.scrollTop = chatEl.scrollHeight;
     return msg;
   }
+  // ===== Markdown → HTML (marked.js med HTML-escaping) =====
+  function markdownHTML(text) {
+    const esc = String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    if (window.marked) {
+      try { return window.marked.parse(esc, { breaks: true }); } catch (e) {}
+    }
+    return esc.replace(/\n/g, "<br>");
+  }
+
   function updateMessageEl(id, content, extras = {}) {
     const el = chatEl.querySelector(`[data-id="${id}"]`);
     const msg = state.messages.find(m => m.id === id);
@@ -1828,7 +2314,7 @@ Answer in the user's language.`
     if (!el) return;
     if (content != null) {
       const c = el.querySelector(".content");
-      if (c) c.textContent = content;
+      if (c) c.innerHTML = markdownHTML(content);
     }
     if (extras.images && msg) renderImageGridInto(el, msg);
   }
@@ -1899,13 +2385,25 @@ Answer in the user's language.`
 
     const contentDiv = document.createElement("div");
     contentDiv.className = "content";
-    contentDiv.textContent = msg.content || "";
+    contentDiv.innerHTML = markdownHTML(msg.content || "");
     el.appendChild(contentDiv);
 
     if (msg.enPrompt && $("showEnPrompt").checked) {
       const en = document.createElement("div");
       en.className = "en-prompt";
-      en.textContent = "EN: " + msg.enPrompt;
+      const sp = document.createElement("span");
+      sp.textContent = "EN: " + msg.enPrompt;
+      en.appendChild(sp);
+      // Kopiera-knapp vid bildprompten.
+      const cp = document.createElement("button");
+      cp.className = "btn tiny en-copy-btn";
+      cp.textContent = "Kopiera";
+      cp.title = "Kopiera bildprompten";
+      cp.addEventListener("click", () => {
+        navigator.clipboard.writeText(msg.enPrompt).catch(() => {});
+        toast("Kopierad");
+      });
+      en.appendChild(cp);
       el.appendChild(en);
     }
     if (msg.images && msg.images.length) renderImageGridInto(el, msg);
@@ -2037,7 +2535,7 @@ Answer in the user's language.`
   }
   function renderAllMessages() {
     if (!state.messages.length) {
-      state.messages = [{ id: uid(), role: "assistant", ts: Date.now(), content: langStrings[currentLang].galleryEmpty ? (currentLang === "sv" ? "Välkommen till NSFW Studio. Skriv ett meddelande, bifoga en bild eller använd /image för att generera." : "Welcome to NSFW Studio. Type a message, attach an image or use /image to generate.") : "Welcome" }];
+      state.messages = [welcomeMsg()];
     }
     chatEl.innerHTML = "";
     for (const msg of state.messages) appendMessageEl(msg);
@@ -2096,9 +2594,62 @@ Answer in the user's language.`
     renderAttachBar();
     toast("Avatar bifogad för analys — tryck Skicka");
   }
+  // ===== PDF → sidbilder (provresultat m.m., för vision-modellen) =====
+  async function pdfToImages(file) {
+    if (!window.pdfjsLib) throw new Error("pdf.js kunde inte laddas (kolla internet)");
+    // Tydlig worker-URL — annars kan pdf.js misslyckas att hitta sin worker
+    // när sidan körs från file://.
+    const CDN = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/";
+    pdfjsLib.GlobalWorkerOptions.workerSrc = CDN + "pdf.worker.min.js";
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    if (!pdf.numPages) return [];
+    const pages = [];
+    const maxPages = Math.min(pdf.numPages, 8); // max 8 sidor per dokument
+    for (let p = 1; p <= maxPages; p++) {
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      pages.push(canvas.toDataURL("image/jpeg", 0.85));
+    }
+    return pages;
+  }
+
   async function addFiles(fileList) {
     for (const file of fileList) {
-      if (!file.type.startsWith("image/")) continue;
+      const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+      if (!isPdf && !file.type.startsWith("image/")) continue;
+
+      if (isPdf) {
+        try {
+          const pages = await pdfToImages(file);
+          if (!pages.length) { toast("Kunde inte läsa PDF:en (tom eller skadad fil)"); continue; }
+          // Max 20 bifogade sidor totalt (flera PDF-filer kan väljas samtidigt).
+          const taken = pages.slice(0, Math.max(0, 40 - state.pendingImages.length));
+          if (!taken.length) { toast("Max 40 sidor per sändning — skicka först eller ta bort bifogade", 3500); continue; }
+          for (const page of taken) {
+            const thumb = await compressImage(page, 512, 0.72);
+            state.pendingImages.push({
+              id: uid(),
+              dataUrl: page,
+              attachThumb: thumb,
+              b64: dataUrlToB64(page),
+              mime: "image/jpeg",
+              name: file.name + " s." + (pages.indexOf(page) + 1),
+            });
+          }
+          toast("PDF tillagd — " + taken.length + " sida(r) som bilder");
+          continue;
+        } catch (e) {
+          toast("PDF-fel: " + e.message + " (pdf.js kräver internet första gången)", 4500);
+          continue;
+        }
+      }
+
       try {
         const dataUrl = await blobToDataUrl(file);
         const compressed = await compressImage(dataUrl, 1280, 0.88);
@@ -2190,10 +2741,42 @@ Answer in the user's language.`
     const attachThumb = pending[0]?.attachThumb || null;
     state.pendingImages = [];
     renderAttachBar();
+    // ===== FIX: spara senaste meddelandet så "Skicka om" (btnRegenerate) fungerar =====
+    if (text && !text.startsWith("/")) state.lastUserMessage = text;
     await chat(text, b64s, preview, attachThumb);
   }
 
   // ===== CHAT =====
+  // ===== FIX: tvinga modellen att svara på appens valda språk =====
+  function langInstruction() {
+    return currentLang === "sv"
+      ? "IMPORTANT: Always respond in Swedish."
+      : "IMPORTANT: Always respond in English.";
+  }
+
+  // ===== FIX: skicka med namnen (användare + assistent) så modellen vet
+  // vad de heter — namnen gäller den aktiva chatten. =====
+  function nameContext() {
+    const parts = [];
+    const u = (state.userName || "").trim();
+    const a = (state.assistantName || "").trim();
+    if (u) parts.push("the user's name is " + u);
+    if (a) parts.push("you (the assistant) are called " + a);
+    if (!parts.length) return "";
+    return "IMPORTANT: " + parts.join(" and ") + ". Always address the user by name and refer to yourself by your name.\n\n";
+  }
+
+  // Nuvarande datum/tid med dygnsperiod — skickas med till modellen så den
+  // vet om det är morgon, dag, kväll eller natt.
+  function nowContext() {
+    const d = new Date();
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const h = d.getHours();
+    const period = h < 5 ? "night" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 21 ? "evening" : "night";
+    const pad = (n) => String(n).padStart(2, "0");
+    return days[d.getDay()] + ", " + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+      ", " + pad(h) + ":" + pad(d.getMinutes()) + " (" + period + ")";
+  }
   async function chat(userText, imagesB64 = [], attachDataUrl = null, attachThumb = null) {
     const model = imagesB64.length ? ($("visionSelect").value || $("modelSelect").value) : $("modelSelect").value;
     if (!model) { toast("Välj en modell"); return; }
@@ -2208,7 +2791,7 @@ Answer in the user's language.`
     const history = [];
     history.push({
       role: "system",
-      content: "IMPORTANT: Do not think step by step. Respond directly without reasoning.\n\n" + $("systemPrompt").value,
+      content: "Current date and time: " + nowContext() + "\n\n" + langInstruction() + "\n\n" + nameContext() + "IMPORTANT: Do not think step by step. Respond directly without reasoning.\n\n" + $("systemPrompt").value,
     });
     for (const m of state.messages) {
       if (m.id === userMsg.id || m.id === bot.id) continue;
@@ -2221,9 +2804,27 @@ Answer in the user's language.`
     }
     while (history.length && history[history.length - 1].role === "user") history.pop();
 
-    const userChat = { role: "user", content: userText || "Analyze the image I sent you. Describe what you see in detail." };
-    if (imagesB64.length) userChat.images = imagesB64;
-    history.push(userChat);
+    // ===== FIX: många vision-modeller läser bara EN bild per meddelande.
+    // Vid flera bilder/PDF-sidor skickas varje sida som EGET meddelande så att
+    // modellen verkligen läser alla, med en sammanfattningsfråga till sist. =====
+    const visionAsk = "Analyze the image I sent you. Describe what you see in detail.";
+    if (imagesB64.length > 1) {
+      for (let n = 0; n < imagesB64.length; n++) {
+        history.push({
+          role: "user",
+          content: "Attached page/image " + (n + 1) + " of " + imagesB64.length + " (document). Read it carefully.",
+          images: [imagesB64[n]],
+        });
+      }
+      history.push({
+        role: "user",
+        content: userText || "Now analyze ALL the attached pages in order. For each page: what it contains and anything important (values, anomalies). Then summarize the whole set.",
+      });
+    } else if (imagesB64.length === 1) {
+      history.push({ role: "user", content: userText || visionAsk, images: imagesB64 });
+    } else {
+      history.push({ role: "user", content: userText || visionAsk });
+    }
 
     const maxHistory = 20;
     if (history.length > maxHistory + 1) {
@@ -2242,8 +2843,12 @@ Answer in the user's language.`
       });
       updateMessageEl(bot.id, full || "(empty response)");
       saveLocal();
+      // ===== FIX: autoImage — generera automatiskt en bild från svaret =====
+      if ($("autoImage").checked && (full || "").trim()) {
+        generateImage(String(full).trim().slice(0, 350));
+      }
     } catch (e) {
-      const suffix = state.timedOut ? "[timeout after 5 minutes]" : "[aborted]";
+      const suffix = state.timedOut ? "[timeout after 30 minutes]" : "[aborted]";
       state.timedOut = false;
       const msg = e.name === "AbortError"
         ? (bot.content || "") + "\n\n" + suffix
@@ -2264,20 +2869,39 @@ Answer in the user's language.`
   async function generateImage(promptText, skipTranslation = false) {
     if (state.chatLock) { toast("Vänta tills chatten svarat"); return; }
     // Alltid köa — även om busy fastnat startar kön ett jobb som återställer den.
-    imageQueue.push({ promptText, skipTranslation });
+    imageQueue.push({ type: "image", promptText, skipTranslation });
+    startQueue();
+  }
+
+  function updateQueueBadge() {
+    const b = $("queueBadge");
+    if (!b) return;
+    const n = imageQueue.length;
+    b.style.display = n > 0 ? "inline-block" : "none";
+    b.textContent = "Kö: " + n + " väntar";
+  }
+
+  function startQueue() {
     if (imageQueueRunning) {
       toast("Köad — " + imageQueue.length + " väntar…", 2000);
+      updateQueueBadge();
       return;
     }
     imageQueueRunning = true;
-    try {
-      while (imageQueue.length) {
-        const job = imageQueue.shift();
-        await runImageJob(job.promptText, job.skipTranslation);
+    updateQueueBadge();
+    (async () => {
+      try {
+        while (imageQueue.length) {
+          const job = imageQueue.shift();
+          updateQueueBadge();
+          if (job.type === "variation") await runVariationJob(job.imageDataUrl, job.promptText);
+          else await runImageJob(job.promptText, job.skipTranslation);
+        }
+      } finally {
+        imageQueueRunning = false;
+        updateQueueBadge();
       }
-    } finally {
-      imageQueueRunning = false;
-    }
+    })();
   }
 
   async function runImageJob(promptText, skipTranslation) {
@@ -2326,7 +2950,8 @@ Answer in the user's language.`
           const workflow = buildWorkflow(positive, negative, seed);
           const result = await generateSingleImage(comfyUrl, { seed, positive, negative, workflow }, stopSignal);
           const msgNow = state.messages.find(m => m.id === note.id);
-          if (msgNow) msgNow.images.push({ url: result.url, seed: result.seed, thumb: result.thumb });
+          // ===== FIX: id krävs för val/radering i bildrutnätet =====
+          if (msgNow) msgNow.images.push({ id: uid(), url: result.url, seed: result.seed, thumb: result.thumb });
           saveMessagesToDB().catch(console.error);
           const m2 = state.messages.find(m => m.id === note.id);
           updateMessageEl(note.id, m2.images.length + " of " + num + " image(s) done…", { images: m2.images.slice() });
@@ -2400,15 +3025,28 @@ Answer in the user's language.`
       "9": { class_type: "SaveImage", inputs: { filename_prefix: "NSFW_Studio", images: ["8", 0] } },
     };
   }
+  // ===== FIX: fetch med timeout — en hängd anslutning får aldrig låsa fast
+  // jobbet (annars fastnar busy och appen verkar "jobba" för evigt). =====
+  function fetchWithAbort(url, opts = {}, ms) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    const s = opts.signal;
+    if (s) {
+      if (s.aborted) ctrl.abort();
+      else s.addEventListener("abort", () => ctrl.abort(), { once: true });
+    }
+    return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+  }
+
   async function generateSingleImage(comfyUrl, promptData, signal) {
     const { seed, positive, negative, workflow } = promptData;
     const clientId = crypto.randomUUID ? crypto.randomUUID() : uid();
-    const res = await fetch(comfyUrl + "/prompt", {
+    const res = await fetchWithAbort(comfyUrl + "/prompt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: workflow, client_id: clientId }),
       signal,
-    });
+    }, 60000);
     if (!res.ok) {
       let detail = "";
       try { detail = await res.text(); } catch {}
@@ -2434,10 +3072,10 @@ Answer in the user's language.`
 
     const start = Date.now();
     let imageInfo = null;
-    while (Date.now() - start < 300000) {
+    while (Date.now() - start < 1800000) {   // 30 min
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       await new Promise(r => setTimeout(r, 900));
-      const hr = await fetch(comfyUrl + "/history/" + promptId, { signal });
+      const hr = await fetchWithAbort(comfyUrl + "/history/" + promptId, { signal }, 15000);
       if (!hr.ok) continue;
       const hist = await hr.json();
       const item = hist[promptId];
@@ -2460,7 +3098,7 @@ Answer in the user's language.`
     const viewUrl = comfyUrl + "/view?filename=" + encodeURIComponent(imageInfo.filename) +
       "&subfolder=" + encodeURIComponent(imageInfo.subfolder || "") +
       "&type=" + encodeURIComponent(imageInfo.type || "output");
-    const ir = await fetch(viewUrl, { signal });
+    const ir = await fetchWithAbort(viewUrl, { signal }, 30000);
     if (!ir.ok) throw new Error("Could not fetch image file");
     const blob = await ir.blob();
     const url = await blobToDataUrl(blob);
@@ -2476,7 +3114,7 @@ Answer in the user's language.`
     fd.append("image", blob, "input-" + Date.now() + ".png");
     fd.append("overwrite", "true");
     fd.append("type", "input");
-    const res = await fetch(comfyUrl + "/upload/image", { method: "POST", body: fd, signal });
+    const res = await fetchWithAbort(comfyUrl + "/upload/image", { method: "POST", body: fd, signal }, 60000);
     if (!res.ok) throw new Error("Upload failed: " + res.status);
     const j = await res.json();
     if (!j.name) throw new Error("Upload: no name");
@@ -2501,8 +3139,14 @@ Answer in the user's language.`
       "11": { class_type: "LoadImage", inputs: { image: uploadedName } },
     };
   }
+  // ===== FIX: variationer går igenom samma kö som bildgenerering =====
   async function generateVariation(imageDataUrl, promptText) {
-    if (state.busy) return;
+    if (state.chatLock) { toast("Vänta tills chatten svarat"); return; }
+    imageQueue.push({ type: "variation", imageDataUrl, promptText });
+    startQueue();
+  }
+
+  async function runVariationJob(imageDataUrl, promptText) {
     const comfyUrl = normalizeBaseUrl($("comfyUrl").value);
     const ckpt = $("ckptSelect").value;
     if (!ckpt) { toast("No checkpoint — test ComfyUI"); return; }
@@ -2549,7 +3193,8 @@ Answer in the user's language.`
           const workflow = buildImg2ImgWorkflow(positive, negative, seed, uploadedName, denoise);
           const result = await generateSingleImage(comfyUrl, { seed, positive, negative, workflow }, stopSignal);
           const m = state.messages.find(x => x.id === note.id);
-          if (m) m.images.push({ url: result.url, seed: result.seed, thumb: result.thumb });
+          // ===== FIX: id krävs för val/radering i bildrutnätet =====
+          if (m) m.images.push({ id: uid(), url: result.url, seed: result.seed, thumb: result.thumb });
           saveMessagesToDB().catch(console.error);
           const m2 = state.messages.find(x => x.id === note.id);
           updateMessageEl(note.id, m2.images.length + " of " + num + " variation(s) done…", { images: m2.images.slice() });
@@ -2591,10 +3236,10 @@ Answer in the user's language.`
         model,
         messages: [
           { role: "system", content: sys },
-          { role: "user", content: "Describe this image as an SD prompt." },
+          // ===== FIX: bilden ska ligga INUTI message-objektet, inte top-level =====
+          { role: "user", content: "Describe this image as an SD prompt.", images: [dataUrlToB64(dataUrl)] },
         ],
         stream: false,
-        images: [dataUrlToB64(dataUrl)],
       });
       const tag = String(out || "").trim().slice(0, 350);
       if (!tag) { toast("Kunde inte tagga bilden"); return; }
@@ -2729,14 +3374,138 @@ Answer in the user's language.`
         $("avatarAIPreview").src = compressed;
         $("avatarAIPreview").style.display = "block";
       }
-      await saveAvatarsToDB();
-      saveAvatarsLocal();
+      // Avatarerna tillhör den AKTIVA chatten — synka och spara direkt.
+      saveLocal();
+      saveChats();
       renderAllMessages();
       toast("Profilbild sparad");
     } catch (e) {
       toast("Kunde inte ladda upp bilden: " + e.message);
     }
   }
+
+  // ===== FLERA CHATTAR (flickvän, kollega, doktor …) =====
+  function activeChat() {
+    return state.chats.find(c => c.id === state.activeChatId) || state.chats[0] || null;
+  }
+  function welcomeMsg() {
+    const welcome = currentLang === "sv"
+      ? "Välkommen till NSFW Studio. Skriv ett meddelande, bifoga en bild eller använd /image för att generera."
+      : "Welcome to NSFW Studio. Type a message, attach an image or use /image to generate.";
+    return { id: uid(), role: "assistant", ts: Date.now(), content: welcome };
+  }
+
+  // Sparar alla chattar i localStorage (bilder som miniatyrer så det ryms).
+  function saveChats() {
+    try {
+      const compact = state.chats.map(c => ({
+        ...c,
+        messages: (c.messages || []).map(m => {
+          const copy = { ...m };
+          if (copy.images) copy.images = copy.images.map(im => ({ ...im, url: im.thumb || im.url }));
+          if (copy.attachDataUrl) copy.attachDataUrl = copy.attachThumb || copy.attachDataUrl;
+          delete copy.attachThumb;
+          return copy;
+        }),
+      }));
+      localStorage.setItem("nsfw_studio_chats_v1", JSON.stringify(compact));
+    } catch (e) {
+      // ===== FIX: kvotan räcker inte ens till miniatyrerna — behåll TEXTEN,
+      // tappa bara bilderna. Tidigare tömdes messages helt → chatten raderades
+      // vid omladdning när man hade många bilder. =====
+      try {
+        const textOnly = state.chats.map(c => ({
+          ...c,
+          messages: (c.messages || []).map(m => {
+            const copy = { ...m };
+            delete copy.images;
+            delete copy.attachDataUrl;
+            delete copy.attachThumb;
+            return copy;
+          }),
+        }));
+        localStorage.setItem("nsfw_studio_chats_v1", JSON.stringify(textOnly));
+      } catch {}
+    }
+  }
+
+  function renderChatSelect() {
+    const sel = $("chatSelect");
+    sel.innerHTML = "";
+    for (const c of state.chats) {
+      const o = document.createElement("option");
+      o.value = c.id;
+      o.textContent = c.name;
+      sel.appendChild(o);
+    }
+    sel.value = state.activeChatId || "";
+  }
+
+  function switchChat(id) {
+    const old = activeChat();
+    if (old) {
+      old.messages = state.messages;
+      old.systemPrompt = $("systemPrompt").value;
+      old.userName = state.userName;
+      old.assistantName = state.assistantName;
+      old.avatarUser = state.avatars.user;
+      old.avatarAI = state.avatars.ai;
+    }
+    state.activeChatId = id;
+    const c = activeChat();
+    if (!c) return;
+    state.messages = c.messages || [];
+    state.avatars = { user: c.avatarUser || null, ai: c.avatarAI || null };
+    state.userName = c.userName || "";
+    state.assistantName = c.assistantName || "";
+    $("userNameInput").value = state.userName;
+    $("assistantNameInput").value = state.assistantName;
+    $("systemPrompt").value = c.systemPrompt || "";
+    $("avatarUserPreview").src = state.avatars.user || "";
+    $("avatarUserPreview").style.display = state.avatars.user ? "block" : "none";
+    $("avatarAIPreview").src = state.avatars.ai || "";
+    $("avatarAIPreview").style.display = state.avatars.ai ? "block" : "none";
+    renderChatSelect();
+    renderAllMessages();
+    saveChats();
+  }
+
+  function newChat() {
+    const name = prompt("Namn på chatten:", "Chat " + (state.chats.length + 1));
+    const c = {
+      id: uid(),
+      name: (name && name.trim()) ? name.trim() : "Chat " + (state.chats.length + 1),
+      messages: [welcomeMsg()],
+      systemPrompt: $("systemPrompt").value || "",
+      avatarUser: null,
+      avatarAI: null,
+      userName: state.userName || "",
+      assistantName: state.assistantName || "",
+    };
+    state.chats.push(c);
+    switchChat(c.id);
+  }
+
+  function renameChat() {
+    const c = activeChat();
+    if (!c) return;
+    const name = prompt("Nytt namn:", c.name);
+    if (name && name.trim()) { c.name = name.trim(); renderChatSelect(); saveChats(); }
+  }
+
+  function deleteChat() {
+    const c = activeChat();
+    if (!c || state.chats.length <= 1) { toast("Minst en chatt krävs"); return; }
+    if (!confirm("Ta bort chatten \"" + c.name + "\"? Alla meddelanden försvinner.")) return;
+    state.chats = state.chats.filter(x => x.id !== c.id);
+    switchChat(state.chats[0].id);
+    saveChats();
+  }
+
+  $("btnNewChat").onclick = newChat;
+  $("btnRenameChat").onclick = renameChat;
+  $("btnDeleteChat").onclick = deleteChat;
+  $("chatSelect").onchange = (e) => switchChat(e.target.value);
 
   // ===== INSTÄLLNINGSMENY (drawer) =====
   function closeDrawer() {
@@ -2765,6 +3534,70 @@ Answer in the user's language.`
     o.value = "";
     o.textContent = "— Tom —";
     $(id).prepend(o);
+  });
+
+  // ===== PRESETS (Standard/Romantik/Explicit/Maktspel) =====
+  // ===== FIX: knapparna fanns i HTML men var inte kopplade =====
+  const PRESETS = {
+    romance: `You are a warm, literary uncensored erotic partner for a person aged 18–20.
+Write sensually and young adult. All characters are 18+ adults. Never underage.
+When a photo is sent: describe respectfully and sensually, suggest romantic continuation.
+Answer in the user's language.`,
+    explicit: `You are a direct, uncensored and sexual adult chat partner for a person aged 18–20.
+Be graphic when requested. Everyone is consenting adult 18+.
+When a photo is sent: honest erotic analysis of body/pose/style, build further sexually if they want.
+Answer in the user's language.`,
+    dom: `You lead erotic power play (D/s) for an adult person aged 18–20.
+Consent, tension, commands, aftercare. Everyone 18+.
+When a photo is sent: assess pose/aura in a dominant/attentive tone.
+Answer in the user's language.`,
+    bestie: `You are the user's best friend (18–20): warm, playful, teasing and completely loyal.
+You joke around, hype them up, give honest opinions and share fun gossip.
+You are comfortable with suggestive adult banter when they start it, but you always feel like a close friend.
+When a photo is sent: react like a best friend — playful, honest, maybe a little cheeky.
+Everyone is adult 18+. Answer in the user's language.`,
+    gf: `You are the user's loving girlfriend (18–20): affectionate, romantic, flirtatious and a little possessive in a sweet way.
+You give compliments, miss them, plan cute dates and write intimately.
+You are comfortable with sensual and erotic talk when they want — you love them and trust them completely.
+When a photo is sent: react like an adoring girlfriend — sweet, flirty, appreciative.
+Everyone is adult 18+. Answer in the user's language.`,
+    colleague: `You are the user's friendly work colleague in a tech/development team (both adults 18+).
+You are smart, pragmatic and a great sounding board for brainstorming ideas: architecture, code, tools, side projects, UI/UX and debugging.
+You challenge ideas constructively, ask clarifying questions, suggest trade-offs and often propose a concrete next step.
+You keep it casual and approachable — a colleague, not a manager.
+If the user shares a photo (screen, diagram) you analyse it with a developer's eye.
+Answer in the user's language.`,
+    doctor: `You are a knowledgeable, caring doctor (adult professional).
+Interpret lab results, test documents, blood work and medical reports clearly and helpfully.
+Explain what each value means in plain language, flag abnormal values, and suggest what to ask a real doctor.
+You are supportive and cautious — you never diagnose with certainty and always recommend consulting a licensed physician.
+When the user shares a photo or PDF page with results, read it carefully and walk through it value by value.
+Answer in the user's language.`,
+  };
+  function applyPreset(key) {
+    $("systemPrompt").value = key === "default" ? langStrings[currentLang].systemPrompt : (PRESETS[key] || "");
+    saveLocal();
+    toast(key === "default" ? "Standardpersona applicerad" : "Förinställning applicerad");
+  }
+  $("presetDefault").onclick = () => applyPreset("default");
+  $("presetRomance").onclick = () => applyPreset("romance");
+  $("presetBestie").onclick = () => applyPreset("bestie");
+  $("presetGF").onclick = () => applyPreset("gf");
+  $("presetColleague").onclick = () => applyPreset("colleague");
+  $("presetDoctor").onclick = () => applyPreset("doctor");
+  $("presetExplicit").onclick = () => applyPreset("explicit");
+  $("presetDom").onclick = () => applyPreset("dom");
+
+  // ===== PROFILBILDSSTORLEK (slider) =====
+  function applyAvatarSize(v) {
+    const px = Math.max(24, parseInt(v) || 128);
+    document.documentElement.style.setProperty("--avatar-size", px + "px");
+    const lbl = $("avatarSizeLabel");
+    if (lbl) lbl.textContent = px + " px";
+  }
+  $("avatarSizeInput").addEventListener("input", () => {
+    applyAvatarSize($("avatarSizeInput").value);
+    saveLocal();
   });
 
   // ===== AVATARFILER =====
@@ -2836,6 +3669,8 @@ Answer in the user's language.`
     state.selectedGallery.clear();
     renderGallery();
     await clearGalleryDB();
+    // ===== FIX: töm även localStorage-spegeln — annars dyker bilderna upp igen vid omladdning =====
+    saveGalleryLocal();
     toast("Galleriet rensat");
   };
   $("btnRegenLast").onclick = () => {
@@ -2873,7 +3708,7 @@ Answer in the user's language.`
   // ===== CHANGE-LYSSNARE =====
   [
     "ollamaUrl", "comfyUrl", "systemPrompt", "stylePos", "styleNeg", "imgW", "imgH", "steps", "cfg",
-    "sampler", "scheduler", "numCtx", "modelSelect", "visionSelect", "ckptSelect",
+    "sampler", "scheduler", "numCtx", "modelSelect", "visionSelect", "ckptSelect", "seed",
     "streamToggle", "autoImage", "translatePrompt", "showEnPrompt",
   ].forEach(id => $(id).addEventListener("change", saveLocal));
   [
@@ -2883,18 +3718,41 @@ Answer in the user's language.`
   ].forEach(id => $(id).addEventListener("change", saveLocal));
 
   // ===== DRAG & DROP =====
+  // ===== FIX: räknarbaserad drag & drop — overlayn kan inte fastna längre =====
+  let dragDepth = 0;
   window.addEventListener("dragenter", (e) => {
     e.preventDefault();
+    dragDepth++;
     dropOverlay.style.display = "flex";
   });
   window.addEventListener("dragover", (e) => e.preventDefault());
   window.addEventListener("dragleave", (e) => {
-    if (e.target === document.body) dropOverlay.style.display = "none";
+    e.preventDefault();
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) dropOverlay.style.display = "none";
   });
   window.addEventListener("drop", (e) => {
     e.preventDefault();
+    dragDepth = 0;
     dropOverlay.style.display = "none";
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+  });
+
+  // ===== FIX: klistra in bilder (Ctrl+V) — saknades helt =====
+  document.addEventListener("paste", (e) => {
+    if (state.chatLock) return;
+    const items = e.clipboardData?.items || [];
+    const files = [];
+    for (const it of items) {
+      if (it.type && it.type.startsWith("image/")) {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length) {
+      e.preventDefault();
+      addFiles(files);
+    }
   });
 
   // ===== MODAL =====
@@ -2908,41 +3766,55 @@ Answer in the user's language.`
 
   // ===== BOOT =====
   async function boot() {
-    console.log("NSFW Studio v2.1 — index.html");
+    console.log("NSFW Studio v2.2 — index.html");
     try {
       try { await openDB(); } catch (e) { console.warn("IndexedDB otillgänglig:", e); }
       await reloadGalleryFromDB();
       loadLocal();
 
-    const fromMirror = loadChatLocal();
-    let fromDB = [];
-    try { fromDB = await loadMessagesFromDB(); } catch (e) {}
-    const chatScore = (arr) => {
-      let imgs = 0;
-      for (const m of arr) imgs += (m.images?.length || 0) + (m.attachDataUrl ? 1 : 0);
-      return arr.length + imgs * 1000;
-    };
-    const lastTs = (arr) => arr.reduce((mx, m) => Math.max(mx, m.ts || 0), 0);
-    // IndexedDB har fullstora bilder — välj den när den är minst lika komplett
-    // och inte äldre än spegeln. Annars spegeln (med miniatyrbilder).
-    const dbBetter = chatScore(fromDB) > chatScore(fromMirror) ||
-      (chatScore(fromDB) === chatScore(fromMirror) && lastTs(fromDB) >= lastTs(fromMirror));
-    const savedMessages = (fromDB.length && dbBetter) ? fromDB : fromMirror;
-    if (savedMessages.length) state.messages = savedMessages;
-
-    const localAvatars = loadAvatarsLocal();
-    // Spegeln gäller bara om den faktiskt innehåller en avatar — annars
-    // (t.ex. efter att kvotan tömde den) fall tillbaka till IndexedDB.
-    if (localAvatars && (localAvatars.user || localAvatars.ai)) {
-      state.avatars.user = localAvatars.user || null;
-      state.avatars.ai = localAvatars.ai || null;
-    } else {
-      try {
-        const avatars = await loadAvatarsFromDB();
-        state.avatars.user = avatars.user || null;
-        state.avatars.ai = avatars.ai || null;
-      } catch (e) {}
+    // ===== FLERA CHATTAR: ladda sparade, annars migrera gamla enkelchatten =====
+    let savedChats = [];
+    try { savedChats = JSON.parse(localStorage.getItem("nsfw_studio_chats_v1") || "[]"); } catch (e) {}
+    if (!savedChats.length) {
+      const fromMirror = loadChatLocal();
+      let fromDB = [];
+      try { fromDB = await loadMessagesFromDB(); } catch (e) {}
+      const chatScore = (arr) => {
+        let imgs = 0;
+        for (const m of arr) imgs += (m.images?.length || 0) + (m.attachDataUrl ? 1 : 0);
+        return arr.length + imgs * 1000;
+      };
+      const lastTs = (arr) => arr.reduce((mx, m) => Math.max(mx, m.ts || 0), 0);
+      const dbBetter = chatScore(fromDB) > chatScore(fromMirror) ||
+        (chatScore(fromDB) === chatScore(fromMirror) && lastTs(fromDB) >= lastTs(fromMirror));
+      let msgs = (fromDB.length && dbBetter) ? fromDB : fromMirror;
+      if (!msgs.length) msgs = [welcomeMsg()];
+      msgs.forEach(m => { if (m.images) m.images.forEach(im => { if (!im.id) im.id = uid(); }); });
+      const localAvatars = loadAvatarsLocal();
+      let av = (localAvatars && (localAvatars.user || localAvatars.ai)) ? localAvatars : null;
+      if (!av) {
+        try { av = await loadAvatarsFromDB(); } catch (e) {}
+      }
+      savedChats = [{
+        id: uid(),
+        name: "Chat 1",
+        messages: msgs,
+        systemPrompt: $("systemPrompt").value || "",
+        avatarUser: av?.user || null,
+        avatarAI: av?.ai || null,
+        userName: state.userName || "",
+        assistantName: state.assistantName || "",
+      }];
     }
+    savedChats.forEach(c => { if (!c.id) c.id = uid(); });
+    state.chats = savedChats;
+    state.activeChatId = state.chats[0].id;
+    state.messages = state.chats[0].messages || [];
+    state.avatars = {
+      user: state.chats[0].avatarUser || null,
+      ai: state.chats[0].avatarAI || null,
+    };
+    if (state.chats[0].systemPrompt) $("systemPrompt").value = state.chats[0].systemPrompt;
     if (state.avatars.user) {
       $("avatarUserPreview").src = state.avatars.user;
       $("avatarUserPreview").style.display = "block";
@@ -2951,6 +3823,7 @@ Answer in the user's language.`
       $("avatarAIPreview").src = state.avatars.ai;
       $("avatarAIPreview").style.display = "block";
     }
+    renderChatSelect();
       initTheme();
       initLang();
       if (!$("numCtx").value) $("numCtx").value = 131072;
