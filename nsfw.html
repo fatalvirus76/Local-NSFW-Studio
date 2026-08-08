@@ -209,6 +209,43 @@
     }
     .content h1, .content h2, .content h3 { margin: 8px 0 4px; font-size: 15px; }
     .content blockquote { border-left: 3px solid var(--border); padding-left: 10px; color: var(--muted); margin: 6px 0; }
+    .content hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+    .content table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 12px; }
+    .content th, .content td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
+    .content th { background: var(--panel); font-weight: 700; }
+    .content tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    .content input[type="checkbox"] { accent-color: var(--accent); margin-right: 6px; pointer-events: none; }
+    .content del { color: var(--muted); }
+    .content a { color: var(--accent); }
+    /* ===== FIX: kopiera-knapp på kodblock (alla språk) ===== */
+    .code-block { position: relative; margin: 6px 0; }
+    .code-block pre { margin: 0; padding-top: 30px; max-height: 320px; overflow: auto; }
+    .code-head {
+      position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center;
+      justify-content: space-between; padding: 2px 8px; background: var(--panel);
+      border-bottom: 1px solid var(--border); border-radius: 8px 8px 0 0;
+      font-size: 10px; color: var(--muted); z-index: 2;
+    }
+    .code-head .lang { font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .code-head .copy-code-btn {
+      background: var(--chip-bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 2px 8px; font-size: 10px; cursor: pointer;
+    }
+    .code-head .copy-code-btn:hover { border-color: var(--accent); color: var(--accent); }
+    /* ===== FIX: kopiera-knapp för bildprompter ===== */
+    .prompt-box {
+      position: relative; display: flex; gap: 8px; align-items: flex-start;
+      margin: 6px 0; padding: 8px 10px; border-radius: 8px;
+      background: var(--en-prompt-bg); border: 1px dashed var(--accent);
+    }
+    .prompt-box .copy-prompt-btn {
+      flex-shrink: 0; background: var(--chip-bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 2px 8px; font-size: 10px;
+      cursor: pointer; white-space: nowrap; margin-top: 1px;
+    }
+    .prompt-box .copy-prompt-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .prompt-box .prompt-text { font-size: 12px; line-height: 1.5; word-break: break-word; white-space: pre-wrap; }
+    .content .prompt-box p { margin: 0; }
     .composer {
       border-top: 1px solid var(--border); padding: 14px 16px 16px;
       background: var(--composer-bg); backdrop-filter: blur(10px);
@@ -1642,10 +1679,28 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
       <button class="btn danger" id="btnClear">Rensa chatt</button>
       <button class="btn" id="btnExport">Exportera JSON</button>
     </div>
+
+    <!-- ===== PROFILER: SPARA/LADDA INSTÄLLNINGAR ===== -->
+    <div>
+      <div class="section-title">Profiler (spara/ladda inställningar)</div>
+      <div class="row" style="margin-top:4px;">
+        <input type="text" id="profileName" placeholder="Profilnamn…" style="flex:1;" />
+        <button class="btn small" id="btnSaveProfile" title="Spara nuvarande inställningar som profil">Spara</button>
+      </div>
+      <div class="hint">Sparar anslutning, modeller, bildinställningar, promptmall och stil-prompt.</div>
+      <div class="chip-row" id="profileList" style="margin-top:6px;"></div>
+      <div class="hint" id="profileHint" style="display:none;">Inga profiler sparade ännu — tryck Spara för att spara aktuella inställningar.</div>
+    </div>
+
     </div>
   </aside>
 
   <main>
+    <div class="search-bar" id="searchBar" style="display:none; align-items:center; gap:8px; padding:6px 14px; border-bottom:1px solid var(--border); background:var(--bg2);">
+      <input type="text" id="chatSearchInput" placeholder="🔍 Sök i chatten… (Ctrl/Cmd+F)" style="flex:1; min-width:0;" />
+      <span id="searchCount" style="font-size:11px; color:var(--muted); white-space:nowrap;"></span>
+      <button class="btn tiny ghost" id="btnCloseSearch" title="Stäng sökning (Esc)">✕</button>
+    </div>
     <div id="chat"></div>
     <div class="composer">
       <div class="attach-bar" id="attachBar"></div>
@@ -1675,6 +1730,16 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
     </div>
     <div id="gallery" class="gallery-grid"></div>
     <div class="empty" id="galleryEmpty">Inga bilder ännu</div>
+
+    <!-- ===== BILDHISTORIK / GENERERINGSLÖGG ===== -->
+    <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px;">
+      <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>🕘 Generationshistorik</span>
+        <button class="btn tiny ghost" id="btnToggleHistory" title="Visa/dölj historik">visa</button>
+      </div>
+      <div id="historyList" style="display:none; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; margin-top:4px;"></div>
+      <div class="hint" id="historyHint" style="display:none; margin-top:6px;">Inga generationer ännu — generera en bild så loggas den här med prompt, seed och inställningar.</div>
+    </div>
   </section>
 
   <div class="modal" id="lightbox">
@@ -2400,10 +2465,139 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
   function markdownHTML(text) {
     const esc = String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     if (window.marked) {
-      try { return window.marked.parse(esc, { breaks: true }); } catch (e) {}
+      try {
+        // GFM: tabeller, task-lists, genomstrykning m.m.
+        return window.marked.parse(esc, { breaks: true, gfm: true });
+      } catch (e) {}
     }
     return esc.replace(/\n/g, "<br>");
   }
+
+  // ===== BÄTTRE MARKDOWN: kopiera-knappar på prompts + kodblock =====
+    const PROMPT_HINTS = /(masterpiece|best quality|highly detailed|photorealistic|highres|cinematic|seed |steps |cfg |sampler|euler|dpmpp|prompt:|negative prompt|sharp focus|lighting)/i;
+    const PROMPT_LINE_RX = /^\s*(?:\d+[.)]\s*)?(?:prompt|image prompt|sd prompt|en prompt|bildprompt)\s*:\s*/i;
+    function looksLikePrompt(text) {
+      const t = String(text || "").trim();
+      if (t.length < 12 || t.length > 900) return false;
+      // Räkna komma-segment — bildprompter är tagglistor av korta fraser.
+      const commas = (t.match(/,/g) || []).length;
+      if (commas >= 3) return true;
+      if (commas >= 2 && PROMPT_HINTS.test(t)) return true;
+      return PROMPT_HINTS.test(t) && /[0-9]|x|\.{2,}/.test(t);
+    }
+    // Rad som uttryckligen ÄR en bildprompt: "Prompt: …" eller numrerad "1. Prompt: …"
+    function isPromptLine(text) {
+      const t = String(text || "").trim();
+      if (!t) return false;
+      if (PROMPT_LINE_RX.test(t)) return true;
+      return looksLikePrompt(t);
+    }
+    // Tar bort "1. Prompt:"-/ "Prompt:"-prefix
+    function stripPromptMarker(text) {
+      const t = String(text || "").trim();
+      const m = t.match(/^\s*(?:\d+[.)]\s*)?(?:prompt|image prompt|sd prompt|en prompt|bildprompt)\s*:\s*/i);
+      return m ? t.slice(m[0].length).trim() : t;
+    }
+    // Bygg en prompt-box med kopiera-knapp
+    function makePromptBox(text, extraClass) {
+      const wrap = document.createElement("div");
+      wrap.className = "prompt-box" + (extraClass ? " " + extraClass : "");
+      const btn = document.createElement("button");
+      btn.className = "copy-prompt-btn";
+      btn.textContent = "Kopiera";
+      btn.title = "Kopiera bildprompten";
+      btn.onclick = () => {
+        navigator.clipboard.writeText(text).catch(() => {});
+        toast("Bildprompt kopierad");
+      };
+      const txt = document.createElement("div");
+      txt.className = "prompt-text";
+      txt.textContent = text;
+      wrap.append(btn, txt);
+      return wrap;
+    }
+
+    function enhanceMarkdown(rootEl) {
+      if (!rootEl) return;
+      // 1) Kodblock → rubrik + kopiera-knapp (```prompt → prompt-box)
+      rootEl.querySelectorAll("pre").forEach(pre => {
+        if (pre.closest(".code-block") || pre.closest(".prompt-box")) return;
+        const code = pre.querySelector("code");
+        const codeText = code ? code.textContent : pre.textContent;
+        const cls = (code && code.className) || "";
+        const lang = (cls.match(/language-([\w+-]+)/) || [])[1] || "code";
+        // ===== FIX: kodblock märkta "prompt" blir prompt-boxar med kopiera =====
+        if (lang.toLowerCase() === "prompt") {
+          const pb = makePromptBox(codeText.trim());
+          pre.replaceWith(pb);
+          return;
+        }
+        const wrap = document.createElement("div");
+        wrap.className = "code-block";
+        const head = document.createElement("div");
+        head.className = "code-head";
+        const langSpan = document.createElement("span");
+        langSpan.className = "lang";
+        langSpan.textContent = lang;
+        const btn = document.createElement("button");
+        btn.className = "copy-code-btn";
+        btn.textContent = "Kopiera";
+        btn.onclick = () => {
+          navigator.clipboard.writeText(codeText).catch(() => {});
+          toast("Kod kopierad");
+        };
+        head.append(langSpan, btn);
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(head);
+        wrap.appendChild(pre);
+      });
+      // 2) Paragrafer → en prompt-box PER bildprompt (flera rader = flera knappar)
+      rootEl.querySelectorAll("p").forEach(p => {
+        if (p.closest(".prompt-box") || p.closest(".en-prompt")) return;
+        // innerText hanterar <br> → ny rad (marked med breaks:true gör varje rad till <br>)
+        const lines = (p.innerText || "").split("\n").map(s => s.trim()).filter(Boolean);
+        if (!lines.length) return;
+        // Samma logik som Swift: rad-för-rad — vanlig text i egen paragraf,
+        // varje prompt-rad i en EGEN box med Kopiera.
+        const out = [];
+        let buffer = [];
+        const flushBuffer = () => {
+          const t = buffer.join("\n");
+          if (t.trim()) {
+            if (looksLikePrompt(t)) {
+              out.push(makePromptBox(stripPromptMarker(t)));
+            } else {
+              const np = document.createElement("p");
+              np.textContent = t;
+              out.push(np);
+            }
+          }
+          buffer = [];
+        };
+        for (const l of lines) {
+          if (isPromptLine(l)) {
+            flushBuffer();
+            out.push(makePromptBox(stripPromptMarker(l)));
+          } else {
+            buffer.push(l);
+          }
+        }
+        flushBuffer();
+        // Ersätt <p> med alla byggda delar
+        const frag = document.createDocumentFragment();
+        out.forEach(el => frag.appendChild(el));
+        p.replaceWith(frag);
+      });
+      // 3) Listor: varje rad som ser ut som en bildprompt → kopiera-knapp
+      rootEl.querySelectorAll("li").forEach(li => {
+        if (li.closest(".prompt-box") || li.closest(".en-prompt") || li.closest(".prompt-stack")) return;
+        const t = (li.innerText || "").trim();
+        if (!isPromptLine(t)) return;
+        const pb = makePromptBox(stripPromptMarker(t));
+        pb.style.margin = "2px 0";
+        li.replaceWith(pb);
+      });
+    }
 
   function updateMessageEl(id, content, extras = {}) {
     const el = chatEl.querySelector(`[data-id="${id}"]`);
@@ -2415,7 +2609,11 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
     if (!el) return;
     if (content != null) {
       const c = el.querySelector(".content");
-      if (c) c.innerHTML = markdownHTML(content);
+      if (c) {
+        c.innerHTML = markdownHTML(content);
+        // ===== BÄTTRE MARKDOWN: kopiera-knappar på prompts/kodblock =====
+        enhanceMarkdown(c);
+      }
     }
     if (extras.images && msg) renderImageGridInto(el, msg);
   }
@@ -2488,6 +2686,8 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
     contentDiv.className = "content";
     contentDiv.innerHTML = markdownHTML(msg.content || "");
     el.appendChild(contentDiv);
+    // ===== BÄTTRE MARKDOWN: kopiera-knappar på prompts/kodblock =====
+    enhanceMarkdown(contentDiv);
 
     if (msg.enPrompt && $("showEnPrompt").checked) {
       const en = document.createElement("div");
@@ -2892,7 +3092,7 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
     const history = [];
     history.push({
       role: "system",
-      content: "Current date and time: " + nowContext() + "\n\n" + langInstruction() + "\n\n" + nameContext() + "IMPORTANT: Do not think step by step. Respond directly without reasoning.\n\n" + $("systemPrompt").value,
+      content: "Current date and time: " + nowContext() + "\n\n" + langInstruction() + "\n\n" + nameContext() + "IMPORTANT: Do not think step by step. Respond directly without reasoning.\n\n" + $("systemPrompt").value + "\n\nFORMAT RULE FOR IMAGE PROMPTS:\nWhen you suggest image prompts for image generation (Stable Diffusion / ComfyUI style, comma-separated tags), put EACH prompt on its OWN line, prefixed with \"Prompt: \". If you give several alternatives, number them: \"1. Prompt: ...\", \"2. Prompt: ...\". Never mix a prompt into a sentence. This lets the app show a copy button for every prompt you write.",
     });
     for (const m of state.messages) {
       if (m.id === userMsg.id || m.id === bot.id) continue;
@@ -3054,6 +3254,23 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
           // ===== FIX: id krävs för val/radering i bildrutnätet =====
           if (msgNow) msgNow.images.push({ id: uid(), url: result.url, seed: result.seed, thumb: result.thumb });
           saveMessagesToDB().catch(console.error);
+          // ===== HISTORIK (10): logga generationen med inställningar =====
+          addHistoryEntry({
+            ts: Date.now(),
+            prompt: finalPrompt,
+            enPrompt: en,
+            seed: result.seed,
+            sampler: $("sampler").value,
+            scheduler: $("scheduler").value,
+            steps: $("steps").value,
+            cfg: $("cfg").value,
+            numImages: num,
+            width: $("imgW").value,
+            height: $("imgH").value,
+            status: "bild",
+            url: result.url,
+            thumb: result.thumb,
+          });
           const m2 = state.messages.find(m => m.id === note.id);
           updateMessageEl(note.id, m2.images.length + " of " + num + " image(s) done…", { images: m2.images.slice() });
           await addToGallery(result.url, en + " (seed " + result.seed + ")");
@@ -3297,6 +3514,23 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
           // ===== FIX: id krävs för val/radering i bildrutnätet =====
           if (m) m.images.push({ id: uid(), url: result.url, seed: result.seed, thumb: result.thumb });
           saveMessagesToDB().catch(console.error);
+          // ===== HISTORIK (10): logga variationen med inställningar =====
+          addHistoryEntry({
+            ts: Date.now(),
+            prompt: finalPrompt,
+            enPrompt: en,
+            seed: result.seed,
+            sampler: $("sampler").value,
+            scheduler: $("scheduler").value,
+            steps: $("steps").value,
+            cfg: $("cfg").value,
+            numImages: num,
+            width: $("imgW").value,
+            height: $("imgH").value,
+            status: "variation",
+            url: result.url,
+            thumb: result.thumb,
+          });
           const m2 = state.messages.find(x => x.id === note.id);
           updateMessageEl(note.id, m2.images.length + " of " + num + " variation(s) done…", { images: m2.images.slice() });
           await addToGallery(result.url, en + " (variation, seed " + result.seed + ")");
@@ -3619,8 +3853,24 @@ När användaren skickar ett foto (t.ex. av sig själv): beskriv utseende, kropp
   };
   $("btnDrawerClose").onclick = closeDrawer;
   $("drawerBackdrop").onclick = closeDrawer;
+  // ===== KORTKOMMANDON =====
+  // ===== FIX: Escape stänger även sökfältet; Ctrl/Cmd-genvägar tillagda =====
+  let searchQuery = "";
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeDrawer(); closeLightbox(); }
+    const mod = e.ctrlKey || e.metaKey;
+    // Genvägar som fungerar oavsett lightbox
+    if (e.key === "Escape") { closeDrawer(); closeLightbox(); closeSearch(); }
+    if (mod && (e.key === "f" || e.key === "F")) { e.preventDefault(); openSearch(); }
+    if (mod && e.shiftKey && (e.key === "C" || e.key === "c")) { e.preventDefault(); $("btnClear").click(); }
+    if (mod && (e.key === "Enter" || e.key === "N" || e.key === "n" || e.key === "E" || e.key === "e")) {
+      // Skicka med Ctrl+Enter
+      if (e.key === "Enter") { e.preventDefault(); $("btnSend").click(); return; }
+      // Ny chatt med Ctrl+N
+      if (e.key === "n" || e.key === "N") { e.preventDefault(); newChat(); return; }
+      // Exportera med Ctrl+E
+      if (e.key === "e" || e.key === "E") { e.preventDefault(); $("btnExport").click(); return; }
+    }
+    // Lightbox-navigation med piltangenter
     if (!$("lightbox").classList.contains("open")) return;
     if (e.key === "ArrowRight") lightboxNext();
     if (e.key === "ArrowLeft") lightboxPrev();
@@ -3872,6 +4122,222 @@ Answer in the user's language.`,
   $("lightboxPrev").onclick = (e) => { e.stopPropagation(); lightboxPrev(); };
   $("lightboxNext").onclick = (e) => { e.stopPropagation(); lightboxNext(); };
 
+  // ===== CHATTSÖKNING =====
+  // ===== FIX: nätsökningsfält som filtrerar meddelanden live =====
+  function openSearch() {
+    const bar = $("searchBar");
+    bar.style.display = "flex";
+    $("chatSearchInput").focus();
+  }
+  function closeSearch() {
+    const bar = $("searchBar");
+    bar.style.display = "none";
+    if (searchQuery) { searchQuery = ""; $("chatSearchInput").value = ""; renderSearchResults(); }
+  }
+  function renderSearchResults() {
+    const q = searchQuery.trim().toLowerCase();
+    let count = 0;
+    const msgs = chatEl.querySelectorAll(".msg");
+    msgs.forEach(el => {
+      const content = (el.querySelector(".content")?.textContent || "").toLowerCase();
+      const hit = !q || content.includes(q);
+      el.style.display = hit ? "" : "none";
+      if (hit) count++;
+    });
+    $("searchCount").textContent = q ? count + " träff(ar)" : "";
+  }
+  function initSearch() {
+    $("chatSearchInput").addEventListener("input", (e) => {
+      searchQuery = e.target.value;
+      renderSearchResults();
+    });
+    $("btnCloseSearch").onclick = closeSearch;
+    $("btnCloseSearch").title = "Stäng sökning (Esc)";
+  }
+
+  // ===== PROFILER (9): spara/ladda inställningsprofil =====
+  const PROFILE_KEY = "nsfw_studio_profiles_v1";
+  function loadProfiles() {
+    try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveProfiles(list) {
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function collectProfileData() {
+    return {
+      ollamaUrl: $("ollamaUrl").value, comfyUrl: $("comfyUrl").value,
+      model: $("modelSelect").value, vision: $("visionSelect").value, ckpt: $("ckptSelect").value,
+      systemPrompt: $("systemPrompt").value,
+      stylePos: $("stylePos").value, styleNeg: $("styleNeg").value,
+      imgW: $("imgW").value, imgH: $("imgH").value, steps: $("steps").value, cfg: $("cfg").value,
+      numImages: $("numImages").value, seed: $("seed").value, sampler: $("sampler").value, scheduler: $("scheduler").value,
+      numCtx: $("numCtx").value, stream: $("streamToggle").checked, autoImage: $("autoImage").checked,
+      translatePrompt: $("translatePrompt").checked, showEnPrompt: $("showEnPrompt").checked,
+      useTemplate: $("usePromptTemplate").checked,
+      ddQuality: $("ddQuality").value, ddSubject: $("ddSubject").value, ddPose: $("ddPose").value,
+      ddClothing: $("ddClothing").value, ddSetting: $("ddSetting").value, ddLighting: $("ddLighting").value,
+      ddCamera: $("ddCamera").value, ddBodyType: $("ddBodyType").value, ddHairColor: $("ddHairColor").value,
+      ddHairStyle: $("ddHairStyle").value, ddEyeColor: $("ddEyeColor").value, ddTattoo: $("ddTattoo").value,
+      ddPiercing: $("ddPiercing").value, ddNudity: $("ddNudity").value, ddExplicit: $("ddExplicit").value,
+      ddCustomTags: $("ddCustomTags").value, userName: $("userNameInput").value, assistantName: $("assistantNameInput").value,
+      avatarSize: $("avatarSizeInput").value,
+    };
+  }
+  function applyProfileData(d) {
+    if (!d) return;
+    if (d.ollamaUrl) $("ollamaUrl").value = d.ollamaUrl;
+    if (d.comfyUrl) $("comfyUrl").value = d.comfyUrl;
+    if (d.systemPrompt != null) $("systemPrompt").value = d.systemPrompt;
+    if (d.stylePos != null) $("stylePos").value = d.stylePos;
+    if (d.styleNeg != null) $("styleNeg").value = d.styleNeg;
+    if (d.imgW) $("imgW").value = d.imgW;
+    if (d.imgH) $("imgH").value = d.imgH;
+    if (d.steps) $("steps").value = d.steps;
+    if (d.cfg) $("cfg").value = d.cfg;
+    if (d.numImages) $("numImages").value = d.numImages;
+    if (d.seed != null && d.seed !== "") $("seed").value = d.seed;
+    if (d.sampler) { try { $("sampler").value = d.sampler; } catch (e) {} }
+    if (d.scheduler) { try { $("scheduler").value = d.scheduler; } catch (e) {} }
+    if (d.numCtx) $("numCtx").value = d.numCtx;
+    if (d.stream != null) $("streamToggle").checked = d.stream;
+    if (d.autoImage != null) $("autoImage").checked = d.autoImage;
+    if (d.translatePrompt != null) $("translatePrompt").checked = d.translatePrompt;
+    if (d.showEnPrompt != null) $("showEnPrompt").checked = d.showEnPrompt;
+    if (d.useTemplate != null) $("usePromptTemplate").checked = d.useTemplate;
+    state._savedModel = d.model || state._savedModel;
+    state._savedVision = d.vision || state._savedVision;
+    state._savedCkpt = d.ckpt || state._savedCkpt;
+    // Sätt select-värden om alternativet finns (annars visas det vid nästa test).
+    const opts = (id) => Array.from($(id).options || []).map(o => o.value);
+    if (d.model && opts("modelSelect").includes(d.model)) $("modelSelect").value = d.model;
+    if (d.vision && opts("visionSelect").includes(d.vision)) $("visionSelect").value = d.vision;
+    if (d.ckpt && opts("ckptSelect").includes(d.ckpt)) $("ckptSelect").value = d.ckpt;
+    for (const k of Object.keys(DD_DEFAULTS)) {
+      if (d[k] !== undefined && d[k] !== null) { try { $(k).value = d[k]; } catch (e) {} }
+    }
+    if (d.ddCustomTags != null) $("ddCustomTags").value = d.ddCustomTags;
+    if (d.userName != null) $("userNameInput").value = d.userName;
+    if (d.assistantName != null) $("assistantNameInput").value = d.assistantName;
+    if (d.avatarSize) {
+      $("avatarSizeInput").value = d.avatarSize;
+      applyAvatarSize(d.avatarSize);
+    }
+    state.userName = $("userNameInput").value;
+    state.assistantName = $("assistantNameInput").value;
+    saveLocal();
+    renderAllMessages();
+  }
+  function renderProfiles() {
+    const list = loadProfiles();
+    const wrap = $("profileList");
+    const hint = $("profileHint");
+    wrap.innerHTML = "";
+    hint.style.display = list.length ? "none" : "block";
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i];
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = p.name;
+      chip.title = "Ladda profilen ";
+      chip.onclick = () => { applyProfileData(p.data); toast("Profil laddad: " + p.name); };
+      const del = document.createElement("button");
+      del.className = "btn tiny ghost";
+      del.textContent = "✕";
+      del.title = "Ta bort profilen";
+      del.style.marginLeft = "4px";
+      del.onclick = (e) => {
+        e.stopPropagation();
+        list.splice(i, 1);
+        saveProfiles(list);
+        renderProfiles();
+        toast("Profil raderad");
+      };
+      chip.appendChild(del);
+      wrap.appendChild(chip);
+    }
+  }
+  function initProfiles() {
+    $("btnSaveProfile").onclick = () => {
+      const name = $("profileName").value.trim();
+      if (!name) { toast("Skriv ett profilnamn"); return; }
+      const list = loadProfiles();
+      const data = collectProfileData();
+      const existing = list.findIndex(p => p.name === name);
+      if (existing >= 0) list[existing] = { name, data, ts: Date.now() };
+      else list.push({ name, data, ts: Date.now() });
+      saveProfiles(list.slice(-50));
+      renderProfiles();
+      $("profileName").value = "";
+      toast("Profil sparad: " + name);
+    };
+    renderProfiles();
+  }
+
+  // ===== BILDHISTORIK / GENERERINGSLÖGG (10) =====
+  const HISTORY_KEY = "nsfw_studio_history_v1";
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveHistory(list) {
+    try {
+      // Spara komprimerat (thumb), full upplösning via IndexedDB-galleriet.
+      const compact = list.map(h => ({
+        ...h,
+        url: h.url, thumb: h.thumb || h.url,
+      }));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(compact.slice(0, 100)));
+    } catch (e) {}
+  }
+  function addHistoryEntry(entry) {
+    const list = loadHistory();
+    list.unshift(entry);
+    saveHistory(list);
+    renderHistory();
+  }
+  function renderHistory() {
+    const list = loadHistory();
+    const wrap = $("historyList");
+    const hint = $("historyHint");
+    hint.style.display = list.length ? "none" : "block";
+    wrap.innerHTML = "";
+    for (const h of list) {
+      const item = document.createElement("div");
+      item.className = "history-item";
+      item.style.cssText = "background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px;display:flex;gap:8px;align-items:flex-start;";
+      // Miniatur
+      if (h.thumb) {
+        const img = document.createElement("img");
+        img.src = h.thumb;
+        img.style.cssText = "width:44px;height:44px;object-fit:cover;border-radius:6px;flex-shrink:0;cursor:pointer;";
+        img.onclick = () => openLightbox(h.thumb);
+        item.appendChild(img);
+      }
+      const body = document.createElement("div");
+      body.style.cssText = "flex:1;min-width:0;";
+      const line1 = document.createElement("div");
+      line1.style.cssText = "font-size:10px;color:var(--muted);display:flex;justify-content:space-between;gap:6px;";
+      line1.innerHTML = `<span>${new Date(h.ts).toLocaleString()}</span><span>${h.status || "klar"}</span>`;
+      const prompt = document.createElement("div");
+      prompt.style.cssText = "font-size:11px;color:var(--text);margin-top:2px;word-wrap:break-word;";
+      prompt.textContent = (h.prompt || "").slice(0, 120) + ((h.prompt || "").length > 120 ? "…" : "");
+      const meta = document.createElement("div");
+      meta.style.cssText = "font-size:10px;color:var(--accent);margin-top:2px;";
+      meta.textContent = `seed ${h.seed !== undefined ? h.seed : "‑"} · ${h.sampler || "‑"} · ${h.steps || "‑"} st · cfg ${h.cfg || "‑"} · ${h.numImages || 1} bild(er)`;
+      body.append(line1, prompt, meta);
+      item.appendChild(body);
+      wrap.appendChild(item);
+    }
+  }
+  function initHistory() {
+    $("btnToggleHistory").onclick = () => {
+      const wrap = $("historyList");
+      const open = wrap.style.display !== "none";
+      wrap.style.display = open ? "none" : "flex";
+      $("btnToggleHistory").textContent = open ? "visa" : "dölj";
+    };
+    renderHistory();
+  }
+
   // ===== BOOT =====
   async function boot() {
     console.log("NSFW Studio v2.2 — index.html");
@@ -3934,6 +4400,9 @@ Answer in the user's language.`,
     renderChatSelect();
       initTheme();
       initLang();
+      initSearch();
+      initProfiles();
+      initHistory();
       if (!$("numCtx").value) $("numCtx").value = 131072;
       renderAllMessages();
       renderGallery();
